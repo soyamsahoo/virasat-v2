@@ -188,6 +188,7 @@ class ArtworkRead(ArtworkBase, Model):
     created_at: datetime
     artisan_name: str = ""
     tradition_title: str = ""
+    origin_state: str = ""
     verification_status: VerificationStatus = VerificationStatus.PENDING
 
 

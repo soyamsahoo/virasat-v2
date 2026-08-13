@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Landmark, ScrollText, ShieldCheck } from "lucide-react";
+import { Landmark, ScrollText, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { api } from "../lib/api";
 import { Hero } from "../components/Hero";
 import { MapExplorer } from "../components/MapExplorer";
@@ -10,22 +10,78 @@ import { PassportCard } from "../components/PassportCard";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Artisan, Artwork, Tradition } from "../types";
 
+interface ArtworkFilters {
+  state: string;
+  tradition_id: string;
+  artisan_id: string;
+  medium: string;
+  century: string;
+}
+
+const EMPTY_FILTERS: ArtworkFilters = {
+  state: "",
+  tradition_id: "",
+  artisan_id: "",
+  medium: "",
+  century: "",
+};
+
 export function HomePage() {
   const [traditions, setTraditions] = useState<Tradition[]>([]);
   const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [allArtworks, setAllArtworks] = useState<Artwork[]>([]);
   const [spotlightArtwork, setSpotlightArtwork] = useState<Artwork | null>(null);
+  const [filters, setFilters] = useState<ArtworkFilters>(EMPTY_FILTERS);
 
   useEffect(() => {
     void api.traditions.list().then(setTraditions).catch(() => setTraditions([]));
     void api.artisans.list().then(setArtisans).catch(() => setArtisans([]));
     void api.artworks.list()
-      .then((rows) => setArtworks(rows.slice(0, 6)))
+      .then((rows) => {
+        setAllArtworks(rows);
+        setArtworks(rows.slice(0, 6));
+      })
       .catch(() => setArtworks([]));
     void api.artworks.get("VR-OD-PAT-2026-000001")
       .then(setSpotlightArtwork)
       .catch(() => setSpotlightArtwork(null));
   }, []);
+
+  useEffect(() => {
+    const active = Object.values(filters).some(Boolean);
+    if (!active) return;
+    const timer = setTimeout(() => {
+      void api.artworks.list({
+        state: filters.state || undefined,
+        tradition_id: filters.tradition_id || undefined,
+        artisan_id: filters.artisan_id || undefined,
+        medium: filters.medium || undefined,
+        century: filters.century ? Number(filters.century) : undefined,
+      })
+        .then(setArtworks)
+        .catch(() => setArtworks([]));
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  const mediums = useMemo(
+    () => Array.from(new Set(allArtworks.map((a) => a.medium).filter(Boolean))) as string[],
+    [allArtworks],
+  );
+  const centuries = useMemo(
+    () => Array.from(new Set(allArtworks.map((a) => Math.ceil(a.creation_year / 100))))
+      .sort((a, b) => a - b),
+    [allArtworks],
+  );
+  const states = useMemo(
+    () => Array.from(new Set(allArtworks.map((a) => a.origin_state).filter(Boolean))) as string[],
+    [allArtworks],
+  );
+
+  const hasActiveFilters = Object.values(filters).some(Boolean);
+  const setFilter = (key: keyof ArtworkFilters, value: string) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
 
   const spotlightArtisan = spotlightArtwork
     ? artisans.find((a) => a.id === spotlightArtwork.artisan_id) ?? null
@@ -151,13 +207,78 @@ export function HomePage() {
             passport.
           </p>
         </ScrollReveal>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {artworks.map((artwork, index) => (
-            <ScrollReveal key={artwork.id} delay={(index % 3) * 0.08}>
-              <ArtworkCard artwork={artwork} />
-            </ScrollReveal>
-          ))}
+
+        <div className="mb-10 rounded-sm hairline p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="eyebrow flex items-center gap-2">
+              <SlidersHorizontal size={13} /> Filter the Registry
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-museum-gold hover:underline"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <select
+              value={filters.state}
+              onChange={(e) => setFilter("state", e.target.value)}
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+            >
+              <option value="">All states</option>
+              {states.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select
+              value={filters.tradition_id}
+              onChange={(e) => setFilter("tradition_id", e.target.value)}
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+            >
+              <option value="">All traditions</option>
+              {traditions.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+            </select>
+            <select
+              value={filters.artisan_id}
+              onChange={(e) => setFilter("artisan_id", e.target.value)}
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+            >
+              <option value="">All artisans</option>
+              {artisans.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}
+            </select>
+            <select
+              value={filters.medium}
+              onChange={(e) => setFilter("medium", e.target.value)}
+              className="truncate rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+            >
+              <option value="">All mediums</option>
+              {mediums.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select
+              value={filters.century}
+              onChange={(e) => setFilter("century", e.target.value)}
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+            >
+              <option value="">All centuries</option>
+              {centuries.map((c) => <option key={c} value={String(c)}>{c}th century</option>)}
+            </select>
+          </div>
         </div>
+
+        {artworks.length === 0 ? (
+          <p className="text-center text-sm text-museum-parchment/50">
+            No works match the selected filters.
+          </p>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {artworks.map((artwork, index) => (
+              <ScrollReveal key={artwork.id} delay={(index % 3) * 0.08}>
+                <ArtworkCard artwork={artwork} />
+              </ScrollReveal>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ------------------------------------------------------- spotlight */}

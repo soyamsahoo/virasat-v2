@@ -18,6 +18,7 @@ from typing import Any, Optional
 import asyncpg
 
 from app.core.config import get_settings
+from app.cv_engine.fingerprint import VisualFingerprintEngine
 
 SEED_FILES = (
     "traditions.json",
@@ -119,6 +120,8 @@ class MemoryRepository:
                 row["artisan_id"] = artisan_ids.get(self._norm(row["artisan_ref"]))
             self.artworks[row["id"]] = row
 
+        self._load_local_artwork_media()
+
         for row in stories or []:
             row.setdefault("id", _uid())
             row.setdefault("created_at", _now())
@@ -141,6 +144,45 @@ class MemoryRepository:
             passport_ref = row.pop("passport", None)
             if passport_ref and passport_ref.get("issued"):
                 self._issue_seed_passport(row, passport_ref.get("issued_at"))
+
+    def _load_local_artwork_media(self) -> None:
+        """Ingest local artwork photographs referenced by seed JSON.
+
+        Seed rows may point ``primary_image_url`` at a local file under
+        ``media/...`` (resolved against the seed directory). The photograph
+        is ingested into the blob store, perceptual fingerprints are
+        recomputed from the real bytes (so hashes, the passport digest and
+        duplicate detection all stay coherent with the actual plate), and
+        the URL is rewritten to the served image endpoint.
+        """
+        if not self.artworks:
+            return
+        base = str(get_settings().passport_base_url).rstrip("/")
+        engine = VisualFingerprintEngine()
+        for row in self.artworks.values():
+            ref = row.get("primary_image_url") or ""
+            if not ref.startswith("media/"):
+                continue
+            path = self.seed_dir / ref
+            if not path.is_file():
+                continue
+            image_bytes = path.read_bytes()
+            try:
+                fingerprints = engine.process_artwork_image(image_bytes)
+            except ValueError:
+                continue
+            row["phash_signature"] = fingerprints["phash"]
+            row["dhash_signature"] = fingerprints["dhash"]
+            row["blur_score"] = fingerprints["blur_score"]
+            if fingerprints["descriptors_bytes"]:
+                # mirrors MemoryRepository.set_artwork_fingerprint()
+                row["orb_descriptors"] = fingerprints["descriptors_bytes"]
+                row["orb_keypoint_count"] = fingerprints.get("keypoint_count", 0)
+            # mirrors MemoryRepository.save_artwork_image()
+            self._artwork_images[row["id"]] = image_bytes
+            row["primary_image_url"] = (
+                f"{base}/api/v1/artworks/{row['heritage_id']}/image"
+            )
 
     def _issue_seed_passport(self, artwork: dict, issued_at: str | None) -> None:
         from app.core.security import build_passport_digest
@@ -195,7 +237,28 @@ class MemoryRepository:
             trad = self.traditions.get(artisan.get("primary_tradition_id") or "")
             out["tradition_title"] = trad["title"] if trad else ""
             out["verification_status"] = artisan.get("verification_status", "pending")
+            region = self.regions.get(artisan.get("region_id") or "")
+            out["origin_state"] = region["state"] if region else ""
         return out
+
+    def _artwork_matches(
+        self, row: dict, *, state: str | None, tradition_id: str | None,
+        medium: str | None, century: int | None,
+    ) -> bool:
+        enriched = self._enrich_artwork(row)
+        if state and enriched.get("origin_state", "").lower() != state.lower():
+            return False
+        if tradition_id and row.get("artisan_id"):
+            artisan = self.artisans.get(row["artisan_id"] or "")
+            if not artisan or str(artisan.get("primary_tradition_id") or "") != tradition_id:
+                return False
+        if medium and (row.get("medium") or "").lower() != medium.lower():
+            return False
+        if century is not None:
+            year = row.get("creation_year") or 0
+            if not (1 + (year - 1) // 100 == century):
+                return False
+        return True
 
     def _lineage(self, artisan_id: str, depth: int) -> list[dict]:
         members: list[dict] = []
@@ -369,10 +432,19 @@ class MemoryRepository:
         return self._lineage(artisan_id, 1)
 
     # ------------------------------------------------------------- artworks
-    async def list_artworks(self, artisan_id: str | None = None) -> list[dict]:
+    async def list_artworks(
+        self, artisan_id: str | None = None, state: str | None = None,
+        tradition_id: str | None = None, medium: str | None = None,
+        century: int | None = None,
+    ) -> list[dict]:
         rows = []
         for row in self.artworks.values():
             if artisan_id and row.get("artisan_id") != artisan_id:
+                continue
+            if not self._artwork_matches(
+                row, state=state, tradition_id=tradition_id,
+                medium=medium, century=century,
+            ):
                 continue
             rows.append(self._enrich_artwork(row))
         return rows
@@ -784,24 +856,45 @@ class PostgresRepository:
     # ------------------------------------------------------------- artworks
     _ARTWORK_SELECT = """
         SELECT ar.*, a.full_name AS artisan_name,
-               t.title AS tradition_title, a.verification_status
+               t.title AS tradition_title, a.verification_status,
+               r.state AS origin_state
         FROM artworks ar
         JOIN artisans a ON a.id = ar.artisan_id
         LEFT JOIN traditions t ON t.id = a.primary_tradition_id
+        LEFT JOIN regions r ON r.id = a.region_id
     """
 
-    async def list_artworks(self, artisan_id: str | None = None) -> list[dict]:
+    async def list_artworks(
+        self, artisan_id: str | None = None, state: str | None = None,
+        tradition_id: str | None = None, medium: str | None = None,
+        century: int | None = None,
+    ) -> list[dict]:
+        clauses: list[str] = []
+        params: list = []
         if artisan_id:
-            async with self.pool.acquire() as conn:
-                return self._rows(
-                    await conn.fetch(
-                        f"{self._ARTWORK_SELECT} WHERE ar.artisan_id = $1 ORDER BY ar.created_at",
-                        uuid.UUID(artisan_id),
-                    )
-                )
+            params.append(uuid.UUID(artisan_id))
+            clauses.append(f"ar.artisan_id = ${len(params)}")
+        if state:
+            params.append(state)
+            clauses.append(f"r.state ILIKE ${len(params)}")
+        if tradition_id:
+            params.append(uuid.UUID(tradition_id))
+            clauses.append(f"a.primary_tradition_id = ${len(params)}")
+        if medium:
+            params.append(medium)
+            clauses.append(f"ar.medium ILIKE ${len(params)}")
+        if century is not None:
+            params.append((int(century) - 1) * 100 + 1)
+            clauses.append(f"ar.creation_year >= ${len(params)}")
+            params.append(int(century) * 100)
+            clauses.append(f"ar.creation_year <= ${len(params)}")
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         async with self.pool.acquire() as conn:
             return self._rows(
-                await conn.fetch(f"{self._ARTWORK_SELECT} ORDER BY ar.created_at")
+                await conn.fetch(
+                    f"{self._ARTWORK_SELECT} {where} ORDER BY ar.created_at",
+                    *params,
+                )
             )
 
     async def get_artwork_by_id(self, artwork_id: str) -> dict | None:
@@ -821,7 +914,7 @@ class PostgresRepository:
     async def next_heritage_sequence(self, year: int) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.fetchval(
-                """
+                r"""
                 SELECT COALESCE(MAX((regexp_match(heritage_id, '-(\d{6})$'))[1])::INT, 0) + 1
                 FROM artworks WHERE creation_year = $1
                 """,

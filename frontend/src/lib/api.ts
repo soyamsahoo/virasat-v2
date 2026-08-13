@@ -95,8 +95,22 @@ export const api = {
     }),
   },
   artworks: {
-    list: (artisan_id?: string) =>
-      request<Artwork[]>(`/artworks${artisan_id ? `?artisan_id=${artisan_id}` : ""}`),
+    list: (params?: {
+      artisan_id?: string;
+      state?: string;
+      tradition_id?: string;
+      medium?: string;
+      century?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.artisan_id) query.set("artisan_id", params.artisan_id);
+      if (params?.state) query.set("state", params.state);
+      if (params?.tradition_id) query.set("tradition_id", params.tradition_id);
+      if (params?.medium) query.set("medium", params.medium);
+      if (params?.century) query.set("century", String(params.century));
+      const suffix = query.toString() ? `?${query.toString()}` : "";
+      return request<Artwork[]>(`/artworks${suffix}`);
+    },
     get: (heritageId: string) => request<Artwork>(`/artworks/${heritageId}`),
     similar: (heritageId: string) => request<SimilarArtwork[]>(`/artworks/${heritageId}/similar`),
     imageUrl: (heritageId: string) => `${BASE_URL}/artworks/${heritageId}/image`,

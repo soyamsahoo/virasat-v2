@@ -2,22 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Landmark, ChevronRight } from "lucide-react";
+import { Landmark, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { gsap } from "../lib/gsap";
 import { mapLevels, palette, type MapLevel } from "../lib/tokens";
-import type { Artisan, Region } from "../types";
+import type { Artisan, Artwork, Region } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
 const MAP_STYLE_URL =
   (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ??
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
-const levelSequence: MapLevel[] = ["overview", "state", "village"];
+const levelSequence: MapLevel[] = ["overview", "state", "village", "artwork"];
+
+const VILLAGE_POINT: [number, number] = [85.8239, 19.8924];
 
 export function MapExplorer() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [artisans, setArtisans] = useState<Artisan[]>([]);
+  const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [level, setLevel] = useState<MapLevel>("overview");
   const [selected, setSelected] = useState<Artisan | null>(null);
 
@@ -70,14 +73,15 @@ export function MapExplorer() {
     if (!map) return;
     if (!map.loaded()) map.once("load", () => paintMap(map));
     else paintMap(map);
-  }, [regions, artisans, mapFailed]);
+  }, [regions, artisans, artworks, mapFailed]);
 
   function paintMap(map: maplibregl.Map) {
-    for (const layer of ["virasat-regions", "virasat-region-label", "virasat-lineage"]) {
+    for (const layer of ["virasat-regions", "virasat-region-label", "virasat-lineage", "virasat-artworks"]) {
       if (map.getLayer(layer)) map.removeLayer(layer);
     }
     if (map.getSource("virasat-regions")) map.removeSource("virasat-regions");
     if (map.getSource("virasat-lineage")) map.removeSource("virasat-lineage");
+    if (map.getSource("virasat-artworks")) map.removeSource("virasat-artworks");
 
     const regionGeo = {
       type: "FeatureCollection" as const,
@@ -138,6 +142,41 @@ export function MapExplorer() {
         "circle-stroke-color": palette.gold,
       },
     });
+
+    // ---------------------------------------------------- artwork overlay
+    // The final drill stage: registered plates pinned around the workshop.
+    if (artworks.length > 0) {
+      const artworkGeo = {
+        type: "FeatureCollection" as const,
+        features: artworks.map((artwork, index) => {
+          const angle = (index / Math.max(artworks.length, 1)) * Math.PI * 2;
+          const ring = 0.0014;
+          return {
+            type: "Feature" as const,
+            geometry: {
+              type: "Point" as const,
+              coordinates: [
+                VILLAGE_POINT[0] + Math.cos(angle) * ring,
+                VILLAGE_POINT[1] + Math.sin(angle) * ring,
+              ] as [number, number],
+            },
+            properties: { heritage_id: artwork.heritage_id, title: artwork.title },
+          };
+        }),
+      };
+      map.addSource("virasat-artworks", { type: "geojson", data: artworkGeo });
+      map.addLayer({
+        id: "virasat-artworks",
+        type: "circle",
+        source: "virasat-artworks",
+        paint: {
+          "circle-radius": 7,
+          "circle-color": palette.gold,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": palette.black,
+        },
+      });
+    }
   }
 
   // ----------------------------------------------------- Zoom state machine
@@ -154,7 +193,39 @@ export function MapExplorer() {
     });
   }, [level]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.loaded()) return;
+    map.on("click", "virasat-artworks", (event) => {
+      const props = (event.features?.[0]?.properties ?? {}) as {
+        heritage_id?: string;
+        title?: string;
+      };
+      if (!props.heritage_id) return;
+      const module = import("maplibre-gl");
+      void module.then((m) => {
+        const node = document.createElement("div");
+        node.innerHTML = `
+          <p style="font-family:Georgia,serif;font-size:14px;color:#0D0D0D">${props.title ?? ""}</p>
+          <a href="/passport?id=${props.heritage_id}"
+             style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8B4513">
+            Open the heritage passport →
+          </a>`;
+        new m.default.Popup({ closeButton: false, offset: 12 })
+          .setLngLat((event.lngLat ?? { lng: 0, lat: 0 }) as { lng: number; lat: number })
+          .setDOMContent(node)
+          .addTo(map);
+      });
+    });
+    return () => {
+      (map.off as unknown as (type: string, layerId: string, listener: () => void) => void)(
+        "click", "virasat-artworks", () => undefined,
+      );
+    };
+  }, [artworks, mapRef.current]);
+
   function drillTo(next: MapLevel) {
+    if (next === "artwork" && !selected) return;
     gsap.to(".map-svg-ring", {
       opacity: 0.35,
       scale: level === "overview" ? 0.6 : level === "state" ? 1 : 1.25,
@@ -166,8 +237,11 @@ export function MapExplorer() {
 
   function selectArtisan(artisan: Artisan) {
     setSelected(artisan);
+    void api.artisans.artworks(artisan.id)
+      .then(setArtworks)
+      .catch(() => setArtworks([]));
     if (mapRef.current) {
-      setLevel("village");
+      setLevel("artwork");
     }
   }
 
@@ -242,10 +316,13 @@ export function MapExplorer() {
                 <button
                   key={lvl}
                   onClick={() => drillTo(lvl)}
+                  disabled={lvl === "artwork" && !selected}
                   className={`rounded-sm border px-4 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     level === lvl
                       ? "border-museum-gold bg-museum-gold text-museum-black"
-                      : "border-museum-parchment/25 bg-museum-black/70 text-museum-parchment/75 hover:border-museum-gold/70 hover:text-museum-gold"
+                      : lvl === "artwork" && !selected
+                        ? "cursor-not-allowed border-museum-parchment/10 bg-museum-black/70 text-museum-parchment/30"
+                        : "border-museum-parchment/25 bg-museum-black/70 text-museum-parchment/75 hover:border-museum-gold/70 hover:text-museum-gold"
                   }`}
                 >
                   {lvl}
@@ -326,6 +403,46 @@ export function MapExplorer() {
               >
                 Open the lineage record →
               </Link>
+            </div>
+          )}
+
+          {selected && (
+            <div className="rounded-sm hairline p-5">
+              <p className="eyebrow mb-4 flex items-center gap-2">
+                <ImageIcon size={14} /> Registered Plates
+              </p>
+              {artworks.length === 0 ? (
+                <p className="text-sm text-museum-parchment/50">
+                  No works registered to this workshop yet.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {artworks.map((artwork) => (
+                    <li key={artwork.id}>
+                      <Link
+                        to={`/passport?id=${artwork.heritage_id}`}
+                        className="group flex items-center gap-3 rounded-sm border border-museum-parchment/10 p-2.5 transition-colors hover:border-museum-gold/60"
+                      >
+                        <img
+                          src={artwork.primary_image_url || undefined}
+                          alt={artwork.title}
+                          className="h-12 w-10 shrink-0 rounded-sm object-cover"
+                          loading="lazy"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm text-museum-parchment group-hover:text-museum-gold">
+                            {artwork.title}
+                          </span>
+                          <span className="block text-[10px] uppercase tracking-[0.16em] text-museum-parchment/45">
+                            {artwork.heritage_id} · {artwork.creation_year}
+                          </span>
+                        </span>
+                        <ChevronRight size={14} className="ml-auto shrink-0 text-museum-gold/80 transition-transform group-hover:translate-x-1" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>

@@ -93,6 +93,7 @@ export interface Artwork {
   created_at: string;
   artisan_name: string;
   tradition_title: string;
+  origin_state: string;
   verification_status: VerificationStatus;
 }
 

@@ -30,9 +30,19 @@ router = APIRouter(prefix="/artworks", tags=["artworks"])
 @router.get("", response_model=list[ArtworkRead])
 async def list_artworks(
     artisan_id: uuid.UUID | None = None,
+    state: str | None = Query(default=None, max_length=100),
+    tradition_id: uuid.UUID | None = None,
+    medium: str | None = Query(default=None, max_length=255),
+    century: int | None = Query(default=None, ge=10, le=22),
     repo: Repository = Depends(get_repo),
 ) -> list[ArtworkRead]:
-    rows = await repo.list_artworks(artisan_id=str(artisan_id) if artisan_id else None)
+    rows = await repo.list_artworks(
+        artisan_id=str(artisan_id) if artisan_id else None,
+        state=state,
+        tradition_id=str(tradition_id) if tradition_id else None,
+        medium=medium,
+        century=century,
+    )
     return [ArtworkRead.model_validate(row) for row in rows]
 
 

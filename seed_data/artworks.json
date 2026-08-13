@@ -13,7 +13,7 @@
     },
     "phash_signature": "f894687ec8dfec0add55bc48695a4ec7ac3e87e50e67ff72fd45883bad63355c",
     "dhash_signature": "e651caa22ea9a2dfd7dff957c664c6f12d2b1407f95c081d55ef133f7b2eaf6c",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-01.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000002",
@@ -25,7 +25,7 @@
     "blur_score": 310.2,
     "phash_signature": "1f048bc762030f552b7d9c4f8f98ab8ddd56652c277f2e8d8c5edee9f32870c6",
     "dhash_signature": "6ad04fdd4bbe885447d6afaf74b175e8d3e1a711262b46436a617e1b1fab8e5b",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-02.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000003",
@@ -41,7 +41,7 @@
     },
     "phash_signature": "5d084004a6f8da3d6b56b656587a51c2f40b3acbe0597f2dcba069e0c67457c0",
     "dhash_signature": "bf8af69edd5422d7a3ec795d502ed62720004bc9127d908d926f695d69054b39",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-03.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000004",
@@ -57,7 +57,7 @@
     },
     "phash_signature": "ffda9199257434c302fb55973f09c30fbffe6f7cd0cecbfac9b89b1f304078e6",
     "dhash_signature": "388e62918240a85d9a93aee07395018971774dda466cf24e8ef58741ebdb5399",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-04.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000005",
@@ -69,7 +69,7 @@
     "blur_score": 198.6,
     "phash_signature": "cd0efce0ba0e1ca0eb2ce63ae95252388d9b3a93d9cf9522f844a34b35025e61",
     "dhash_signature": "42b840223519c27ceb29884ab571041d07039487c91991294e7cf042e6ec97ad",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-05.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000006",
@@ -81,7 +81,7 @@
     "blur_score": 273.1,
     "phash_signature": "967969328b4c1a01b0d67d65592563bf4dbdec7a57ad4ffeb7e26c177a4f4165",
     "dhash_signature": "ba05da2957ff77c88d0a044b7f94aee2754e397fa2ab1db6285d8ac5a2210672",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-06.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000007",
@@ -93,7 +93,7 @@
     "blur_score": 222.9,
     "phash_signature": "2e89520ce60ed9199ae7409c8b41744829bc63a31719f5e5f4a55d842808d98d",
     "dhash_signature": "60d7e53de1ba4c6d031538c5eedf80c3f9331f6018d281581bdf2795f66b83cd",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-07.jpg"
   },
   {
     "heritage_id": "VR-OD-PAT-2026-000008",
@@ -105,6 +105,6 @@
     "blur_score": 165.7,
     "phash_signature": "a2f55bb3ff3fe0a0526b7ca45eaf9f6412f7e4aefda0526fd4754fad3d30702c",
     "dhash_signature": "0f75bc47806de4896da7d82cd4dec4963d31c649566378df2dfb49cb339c9270",
-    "primary_image_url": ""
+    "primary_image_url": "media/artworks/artwork-08.jpg"
   }
 ]

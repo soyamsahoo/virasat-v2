@@ -16,11 +16,12 @@ export const fonts = {
   sans: '"Plus Jakarta Sans", sans-serif',
 } as const;
 
-/** Mapbox GL zoom state machine — India → Odisha → Raghurajpur → workshop. */
+/** Mapbox GL zoom state machine — India → Odisha → Raghurajpur → plates. */
 export const mapLevels = {
   overview: { zoom: 4.5, center: [79.09, 21.15] as [number, number], label: "India — National Overview" },
   state: { zoom: 7.5, center: [85.35, 20.1] as [number, number], label: "Odisha — State Cluster" },
   village: { zoom: 14.0, center: [85.8239, 19.8924] as [number, number], label: "Raghurajpur — Heritage Village" },
+  artwork: { zoom: 15.4, center: [85.8239, 19.8924] as [number, number], label: "Raghurajpur — Workshop Plates" },
 } as const;
 
 export type MapLevel = keyof typeof mapLevels;

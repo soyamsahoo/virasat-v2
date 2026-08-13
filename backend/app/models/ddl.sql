@@ -237,3 +237,70 @@ ALTER TABLE heritage_passports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE provenance_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stories           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE institutional_inquiries ENABLE ROW LEVEL SECURITY;
+
+-- ---------------------------------------------------------------------------
+-- RLS policies
+--
+-- Model: the FastAPI backend connects with the service_role key (which
+-- bypasses RLS entirely), so these policies govern *direct* clients — e.g.
+-- a future browser-side Supabase client using the anon key.
+--
+--   • anon        → read-only access to the public heritage catalogue,
+--                   plus INSERT on institutional_inquiries (contact form).
+--   • authenticated → full CRUD on all registry tables (field-agent work).
+-- ---------------------------------------------------------------------------
+
+-- --------------------------------------------- public read (anon) ----------
+CREATE POLICY "public_read_traditions" ON traditions
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_regions" ON regions
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_field_agents" ON field_agents
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_artisans" ON artisans
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_artworks" ON artworks
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_artwork_image_blobs" ON artwork_image_blobs
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_heritage_passports" ON heritage_passports
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_provenance_events" ON provenance_events
+    FOR SELECT USING (true);
+CREATE POLICY "public_read_stories" ON stories
+    FOR SELECT USING (true);
+
+-- --------------------------------------------- public write (anon) ---------
+-- The institutional inquiry form is the only public write surface.
+CREATE POLICY "public_create_inquiries" ON institutional_inquiries
+    FOR INSERT WITH CHECK (true);
+
+-- --------------------------------------------- registry writes (auth) ------
+CREATE POLICY "authenticated_write_traditions" ON traditions
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_regions" ON regions
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_field_agents" ON field_agents
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_artisans" ON artisans
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_artworks" ON artworks
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_artwork_image_blobs" ON artwork_image_blobs
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_heritage_passports" ON heritage_passports
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_provenance_events" ON provenance_events
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_stories" ON stories
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "authenticated_write_inquiries" ON institutional_inquiries
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- --------------------------------------------- staff-only inquiry admin ----
+-- Dashboard reads/status updates happen via the backend (service role);
+-- this is the direct-client equivalent.
+CREATE POLICY "service_read_inquiries" ON institutional_inquiries
+    FOR SELECT USING (auth.role() = 'service_role');
+CREATE POLICY "service_update_inquiries" ON institutional_inquiries
+    FOR UPDATE USING (auth.role() = 'service_role');
