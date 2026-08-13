@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #0d0d0d;
+  }
+  body {
+    @apply bg-museum-black text-museum-parchment font-sans antialiased;
+    background-image: radial-gradient(
+        1100px 520px at 50% -12%,
+        rgba(197, 160, 89, 0.09),
+        transparent 62%
+      ),
+      radial-gradient(
+        900px 480px at 88% 112%,
+        rgba(139, 69, 19, 0.12),
+        transparent 60%
+      );
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: #c5a059;
+    color: #0d0d0d;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0d0d0d;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3a342a;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #c5a059;
+  }
+}
+
+@layer components {
+  .hairline {
+    @apply border border-museum-parchment/15;
+  }
+  .text-gold-gradient {
+    background: linear-gradient(120deg, #c5a059 10%, #f2e3c0 45%, #c5a059 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .passport-paper {
+    background:
+      linear-gradient(rgba(245, 242, 235, 0.97), rgba(245, 242, 235, 0.97)),
+      repeating-linear-gradient(
+        45deg,
+        rgba(197, 160, 89, 0.04) 0,
+        rgba(197, 160, 89, 0.04) 2px,
+        transparent 2px,
+        transparent 6px
+      );
+  }
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-widest2 text-museum-gold;
+  }
+}

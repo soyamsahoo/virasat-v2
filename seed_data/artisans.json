@@ -1,0 +1,66 @@
+[
+  {
+    "full_name": "Gopinath Moharana",
+    "pehchan_card_id": "PCH-OD-11021",
+    "biography": "Gopinath Moharana, born 1938, is the patriarch of a six-generation chitrakar family of Raghurajpur. He learned the craft from his father as a boy in the service lane of the Jagannath temple ritual, and has painted pattas for temple festivals, museum commissions and national exhibitions for over sixty years. He is a keeper of the traditional grammar — iconometric proportions, border conventions and the story-singers' memory — and remains the family's master outliner.",
+    "generation_number": 1,
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "master_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Shyamsundar Moharana",
+    "pehchan_card_id": "PCH-OD-11022",
+    "biography": "Shyamsundar Moharana, born 1965, carries the family craft into its fifth generation. Trained by his father Gopinath, he specialises in the large ritual pattas (Pahandi and Dashavatara panels) and leads the family workshop, teaching apprenticeship in the traditional guru-shishya manner while adopting archival documentation of the craft.",
+    "generation_number": 2,
+    "parent_ref": "Gopinath Moharana",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "master_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Aditya Moharana",
+    "pehchan_card_id": "PCH-OD-11023",
+    "biography": "Aditya Moharana, born 1992, is the fourth generation in the workshop. He trained at his family bench and later with the Raghurajpur Heritage Collective, where he learned digital documentation of the craft. He paints in the strict traditional palette — Hingula red, lamp black, orpiment yellow — and has begun recording his grandmother's oral stories about village life.",
+    "generation_number": 3,
+    "parent_ref": "Shyamsundar Moharana",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "field_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Kanchana Sahoo",
+    "pehchan_card_id": "PCH-OD-11031",
+    "biography": "Kanchana Sahoo, born 1952, belongs to one of the oldest patta-painting households of the village and learned from her grandmother, who painted festival pattas at a time when women's work was rarely credited. She is celebrated for the miniature palm-leaf-style pattas and for teaching the women's circle of Raghurajpur, where brushes and border-drawing are passed between mothers and daughters.",
+    "generation_number": 1,
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "master_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Sunita Sahoo",
+    "pehchan_card_id": "PCH-OD-11032",
+    "biography": "Sunita Sahoo, born 1982, daughter of Kanchana, paints chiefly the Krishna Leela cycle and the tiger faces of the Raghurajpur festival masks. She coordinates the women's cooperative's export documentation and is a field-verified member of the village's archive circle.",
+    "generation_number": 2,
+    "parent_ref": "Kanchana Sahoo",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "field_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Devraj Sahoo",
+    "pehchan_card_id": "PCH-OD-11033",
+    "biography": "Devraj Sahoo, born 2005, is the youngest painter of the Sahoo household. Still learning the iconometric grammar under his mother Sunita, he has begun producing his first independent pattas and is the first of the household to have his work photographed and fingerprinted for the digital archive.",
+    "generation_number": 3,
+    "parent_ref": "Sunita Sahoo",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "pending",
+    "profile_image_url": ""
+  }
+]

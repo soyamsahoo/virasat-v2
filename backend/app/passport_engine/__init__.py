@@ -1,0 +1,1 @@
+"""Passport issuance: dynamic QR codes and ReportLab certificate PDFs."""
