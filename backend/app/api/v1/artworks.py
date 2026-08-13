@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 
 from app.api.v1.deps import Repository, get_repo
 from app.api.v1.service import issue_passport
@@ -11,12 +11,13 @@ from app.core.config import get_settings
 from app.core.heritage_id import build_next_heritage_id
 from app.core.security import require_api_key
 from app.cv_engine.fingerprint import VisualFingerprintEngine
-from app.cv_engine.matcher import match_orb_descriptors, score_similarity
+from app.cv_engine.matcher import match_orb_descriptors, match_orb_visual, score_similarity
 from app.models.schemas import (
     ArtworkCreate,
     ArtworkRead,
     HeritagePassportRead,
     ImageQualityReport,
+    KeypointMatchPoint,
     ProvenanceEventCreate,
     ProvenanceEventRead,
     SimilarArtwork,
@@ -64,6 +65,7 @@ async def upload_artwork(
     medium: str | None = Form(default=None),
     dimensions: str | None = Form(default=None),
     auto_passport: bool = Form(default=False),
+    request: Request = None,
     repo: Repository = Depends(get_repo),
 ) -> UploadResponse:
     """Field-agent upload endpoint.
@@ -119,6 +121,12 @@ async def upload_artwork(
     }
     artwork = await _persist_artwork(repo, metadata, fingerprints)
 
+    await repo.save_artwork_image(str(artwork["id"]), image_bytes)
+    base = str(request.base_url).rstrip("/") if request else str(get_settings().passport_base_url)
+    image_url = f"{base}/api/v1/artworks/{artwork['heritage_id']}/image"
+    await repo.set_artwork_image_url(str(artwork["id"]), image_url)
+    artwork = await repo.get_artwork_by_id(str(artwork["id"]))
+
     possible_duplicates = await _detect_duplicates(
         repo, fingerprints["descriptors_bytes"], fingerprints["phash"],
         fingerprints["dhash"], str(artwork["id"]),
@@ -152,11 +160,18 @@ async def _detect_duplicates(
     for candidate in candidates:
         if candidate["artwork_id"] == exclude_artwork_id:
             continue
+        stored = await repo.get_artwork_by_id(str(candidate["artwork_id"]))
         payload_b, _ = await repo.get_orb_fingerprint(candidate["artwork_id"])
         orb_score = 0.0
+        orb_verified = False
+        pairs: list[KeypointMatchPoint] = []
+        report = None
         if orb_payload and payload_b:
             report = match_orb_descriptors(orb_payload, payload_b)
             orb_score = report.homography_confidence if report.matched else 0.0
+            orb_verified = report.matched
+            for x1, y1, x2, y2 in match_orb_visual(orb_payload, payload_b):
+                pairs.append(KeypointMatchPoint(x1=x1, y1=y1, x2=x2, y2=y2))
         similarity = score_similarity(
             candidate["phash_distance"], candidate["dhash_distance"],
             report if orb_payload else None,
@@ -166,9 +181,13 @@ async def _detect_duplicates(
                 artwork_id=candidate["artwork_id"],
                 heritage_id=candidate["heritage_id"],
                 title=candidate["title"],
+                artisan_name=(stored or {}).get("artisan_name", ""),
+                artwork_image_url=(stored or {}).get("primary_image_url", ""),
                 phash_distance=candidate["phash_distance"],
                 dhash_distance=candidate["dhash_distance"],
                 orb_match_score=similarity,
+                orb_verified=orb_verified,
+                keypoint_pairs=pairs,
             )
         )
     results.sort(key=lambda s: s.orb_match_score, reverse=True)
@@ -222,6 +241,39 @@ async def get_artwork(
             status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not found."
         )
     return ArtworkRead.model_validate(row)
+
+
+def _sniff_media_type(image_bytes: bytes) -> str:
+    if image_bytes[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if image_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return "application/octet-stream"
+
+
+@router.get("/{heritage_id}/image")
+async def get_artwork_image(
+    heritage_id: str,
+    repo: Repository = Depends(get_repo),
+) -> Response:
+    """Serve the persisted plate photograph of a registered artwork."""
+    artwork = await repo.get_artwork_by_heritage(heritage_id)
+    if artwork is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not found."
+        )
+    image_bytes = await repo.get_artwork_image(str(artwork["id"]))
+    if not image_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No photograph archived."
+        )
+    return Response(
+        content=image_bytes,
+        media_type=_sniff_media_type(image_bytes),
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @router.get("/{heritage_id}/similar", response_model=list[SimilarArtwork])

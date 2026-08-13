@@ -96,19 +96,59 @@ export interface Artwork {
   verification_status: VerificationStatus;
 }
 
+export interface KeypointMatchPoint {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 export interface SimilarArtwork {
   artwork_id: string;
   heritage_id: string;
   title: string;
+  artisan_name: string;
+  artwork_image_url: string;
   phash_distance: number;
   dhash_distance: number;
   orb_match_score: number;
+  orb_verified: boolean;
+  keypoint_pairs: KeypointMatchPoint[];
 }
 
 export interface ImageQualityReport {
   blur_score: number;
   blur_pass: boolean;
   normalized: boolean;
+}
+
+export interface UploadResponse extends Artwork {
+  image_quality: ImageQualityReport;
+  possible_duplicates: SimilarArtwork[];
+  passport: HeritagePassport | null;
+}
+
+export type InquiryType =
+  | "grant"
+  | "exhibition"
+  | "commission"
+  | "research"
+  | "patronage"
+  | "collaboration";
+
+export type InquiryStatus = "new" | "contact_made" | "accepted" | "declined";
+
+export interface InstitutionalInquiry {
+  id: string;
+  artisan_id: string;
+  institution_name: string;
+  institution_type: string;
+  inquiry_type: InquiryType;
+  message: string;
+  contact_email: string | null;
+  status: InquiryStatus;
+  artisan_name: string;
+  created_at: string;
 }
 
 export interface HeritagePassport {

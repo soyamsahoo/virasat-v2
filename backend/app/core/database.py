@@ -62,6 +62,8 @@ class MemoryRepository:
         self.passports: dict[str, dict] = {}
         self.events: list[dict] = []
         self.stories: list[dict] = []
+        self.inquiries: list[dict] = []
+        self._artwork_images: dict[str, bytes] = {}
         self._load_seed()
 
     # ------------------------------------------------------------------ seed
@@ -305,6 +307,13 @@ class MemoryRepository:
     async def get_agent(self, agent_id: str) -> dict | None:
         return self.agents.get(agent_id)
 
+    async def get_agent_by_badge(self, badge_number: str) -> dict | None:
+        badge = badge_number.strip().lower()
+        for row in self.agents.values():
+            if str(row.get("badge_number", "")).strip().lower() == badge:
+                return dict(row)
+        return None
+
     # ------------------------------------------------------------- artisans
     async def list_artisans(
         self, region_id: str | None = None, tradition_id: str | None = None,
@@ -411,6 +420,17 @@ class MemoryRepository:
             row["orb_descriptors"] = orb_bytes
             row["orb_keypoint_count"] = keypoint_count
 
+    async def save_artwork_image(self, artwork_id: str, image_bytes: bytes) -> None:
+        self._artwork_images[artwork_id] = image_bytes
+
+    async def get_artwork_image(self, artwork_id: str) -> bytes | None:
+        return self._artwork_images.get(artwork_id)
+
+    async def set_artwork_image_url(self, artwork_id: str, url: str) -> None:
+        row = self.artworks.get(artwork_id)
+        if row:
+            row["primary_image_url"] = url
+
     async def get_orb_fingerprint(self, artwork_id: str) -> tuple[bytes | None, int]:
         row = self.artworks.get(artwork_id)
         if not row:
@@ -474,6 +494,37 @@ class MemoryRepository:
             return None
         passport = self.passports.get(row["id"])
         return {**passport, "artwork": row} if passport else None
+
+    # ------------------------------------------------------------ inquiries
+    async def create_inquiry(self, data: dict) -> dict:
+        row = {"id": _uid(), "created_at": _now(), "status": "new", **data}
+        self.inquiries.append(row)
+        return self._enrich_inquiry(row)
+
+    async def list_inquiries(
+        self, artisan_id: str | None = None, status: str | None = None
+    ) -> list[dict]:
+        rows = []
+        for row in self.inquiries:
+            if artisan_id and row.get("artisan_id") != artisan_id:
+                continue
+            if status and row.get("status") != status:
+                continue
+            rows.append(self._enrich_inquiry(row))
+        return rows
+
+    async def set_inquiry_status(self, inquiry_id: str, status: str) -> dict | None:
+        for row in self.inquiries:
+            if row["id"] == inquiry_id:
+                row["status"] = status
+                return self._enrich_inquiry(row)
+        return None
+
+    def _enrich_inquiry(self, row: dict) -> dict:
+        out = dict(row)
+        artisan = self.artisans.get(row.get("artisan_id") or "")
+        out["artisan_name"] = artisan["full_name"] if artisan else ""
+        return out
 
     async def close(self) -> None:
         return None
@@ -618,6 +669,14 @@ class PostgresRepository:
         async with self.pool.acquire() as conn:
             record = await conn.fetchrow(
                 "SELECT * FROM field_agents WHERE id = $1", uuid.UUID(agent_id)
+            )
+            return self._r(record) if record else None
+
+    async def get_agent_by_badge(self, badge_number: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            record = await conn.fetchrow(
+                "SELECT * FROM field_agents WHERE LOWER(badge_number) = LOWER($1)",
+                badge_number.strip(),
             )
             return self._r(record) if record else None
 
@@ -807,6 +866,34 @@ class PostgresRepository:
                 keypoint_count,
             )
 
+    async def save_artwork_image(self, artwork_id: str, image_bytes: bytes) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO artwork_image_blobs (artwork_id, image) VALUES ($1, $2)
+                ON CONFLICT (artwork_id) DO UPDATE SET image = EXCLUDED.image
+                """,
+                uuid.UUID(artwork_id),
+                memoryview(image_bytes),
+            )
+
+    async def get_artwork_image(self, artwork_id: str) -> bytes | None:
+        async with self.pool.acquire() as conn:
+            record = await conn.fetchrow(
+                "SELECT image FROM artwork_image_blobs WHERE artwork_id = $1",
+                uuid.UUID(artwork_id),
+            )
+            if not record or not record["image"]:
+                return None
+            return bytes(record["image"])
+
+    async def set_artwork_image_url(self, artwork_id: str, url: str) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE artworks SET primary_image_url = $2 WHERE id = $1",
+                uuid.UUID(artwork_id), url,
+            )
+
     async def get_orb_fingerprint(self, artwork_id: str) -> tuple[bytes | None, int]:
         async with self.pool.acquire() as conn:
             record = await conn.fetchrow(
@@ -931,6 +1018,71 @@ class PostgresRepository:
                 uuid.UUID(artwork["id"]),
             )
             return {**self._r(record), "artwork": artwork} if record else None
+
+    # ------------------------------------------------------------ inquiries
+    async def create_inquiry(self, data: dict) -> dict:
+        async with self.pool.acquire() as conn:
+            record = await conn.fetchrow(
+                """
+                INSERT INTO institutional_inquiries (artisan_id, institution_name,
+                    institution_type, inquiry_type, message, contact_email, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'new') RETURNING id
+                """,
+                uuid.UUID(data["artisan_id"]), data["institution_name"],
+                data.get("institution_type", "Institution"), data["inquiry_type"],
+                data["message"], data.get("contact_email"),
+            )
+            return await self.get_inquiry(str(record["id"]))
+
+    async def get_inquiry(self, inquiry_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            record = await conn.fetchrow(
+                """
+                SELECT i.*, a.full_name AS artisan_name
+                FROM institutional_inquiries i
+                JOIN artisans a ON a.id = i.artisan_id
+                WHERE i.id = $1
+                """,
+                uuid.UUID(inquiry_id),
+            )
+            return self._r(record) if record else None
+
+    async def list_inquiries(
+        self, artisan_id: str | None = None, status: str | None = None
+    ) -> list[dict]:
+        clauses = []
+        params: list[Any] = []
+        if artisan_id:
+            params.append(uuid.UUID(artisan_id))
+            clauses.append(f"i.artisan_id = ${len(params)}")
+        if status:
+            params.append(status)
+            clauses.append(f"i.status = ${len(params)}")
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"""
+                SELECT i.*, a.full_name AS artisan_name
+                FROM institutional_inquiries i
+                JOIN artisans a ON a.id = i.artisan_id
+                {where} ORDER BY i.created_at DESC
+                """,
+                *params,
+            )
+            return self._rows(rows)
+
+    async def set_inquiry_status(self, inquiry_id: str, status: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            record = await conn.fetchrow(
+                """
+                UPDATE institutional_inquiries SET status = $2 WHERE id = $1
+                RETURNING id
+                """,
+                uuid.UUID(inquiry_id), status,
+            )
+            if not record:
+                return None
+        return await self.get_inquiry(str(record["id"]))
 
     async def close(self) -> None:
         if self.pool:

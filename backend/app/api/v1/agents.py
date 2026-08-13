@@ -56,6 +56,20 @@ async def get_agent(
     return FieldAgentRead.model_validate(row)
 
 
+@router.get("/field-agents/by-badge/{badge_number}", response_model=FieldAgentRead)
+async def get_agent_by_badge(
+    badge_number: str,
+    repo: Repository = Depends(get_repo),
+) -> FieldAgentRead:
+    """PWA login: resolve a badge number to its registered field agent."""
+    row = await repo.get_agent_by_badge(badge_number)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Field agent not found."
+        )
+    return FieldAgentRead.model_validate(row)
+
+
 @router.post(
     "/field-agents/{agent_id}/stories",
     response_model=StoryRead,

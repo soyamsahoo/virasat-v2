@@ -4,11 +4,15 @@ import type {
   Artwork,
   FieldAgent,
   HeritagePassport,
+  InstitutionalInquiry,
+  InquiryStatus,
+  InquiryType,
   ProvenanceEvent,
   Region,
   SimilarArtwork,
   Story,
   Tradition,
+  UploadResponse,
   VerificationResult,
   VerificationStatus,
 } from "../types";
@@ -32,10 +36,13 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
+  const headers = new Headers(init?.headers);
+  // JSON bodies get the JSON content type; FormData (multipart uploads)
+  // are left for the browser to tag with the boundary automatically.
+  if (typeof init?.body === "string") {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
@@ -75,12 +82,28 @@ export const api = {
     get: (id: string) => request<ArtisanDetail>(`/artisans/${id}`),
     artworks: (id: string) => request<Artwork[]>(`/artisans/${id}/artworks`),
     stories: (id: string) => request<Story[]>(`/artisans/${id}/stories`),
+    create: (payload: {
+      full_name: string;
+      pehchan_card_id?: string;
+      biography: string;
+      region_id: string;
+      primary_tradition_id: string;
+      parent_artisan_id?: string;
+    }) => request<Artisan>("/artisans", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   },
   artworks: {
     list: (artisan_id?: string) =>
       request<Artwork[]>(`/artworks${artisan_id ? `?artisan_id=${artisan_id}` : ""}`),
     get: (heritageId: string) => request<Artwork>(`/artworks/${heritageId}`),
     similar: (heritageId: string) => request<SimilarArtwork[]>(`/artworks/${heritageId}/similar`),
+    imageUrl: (heritageId: string) => `${BASE_URL}/artworks/${heritageId}/image`,
+    upload: (form: FormData) => request<UploadResponse>("/artworks/upload", {
+      method: "POST",
+      body: form,
+    }),
   },
   passports: {
     get: (heritageId: string) => request<HeritagePassport>(`/passports/${heritageId}`),
@@ -92,9 +115,55 @@ export const api = {
   },
   agents: {
     get: (id: string) => request<FieldAgent>(`/field-agents/${id}`),
+    getByBadge: (badge: string) =>
+      request<FieldAgent>(`/field-agents/by-badge/${encodeURIComponent(badge)}`),
+    register: (payload: {
+      full_name: string;
+      ngo_organization: string;
+      assigned_region_id: string;
+      badge_number: string;
+    }) => request<FieldAgent>("/field-agents", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+    createStory: (agentId: string, payload: {
+      artisan_id: string;
+      title: string;
+      audio_recording_url: string;
+      transcript: string;
+      language: string;
+    }) => request<Story>(`/field-agents/${agentId}/stories`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   },
   events: {
     forArtwork: (artworkId: string) => request<ProvenanceEvent[]>(`/artworks/${artworkId}/events`),
+  },
+  inquiries: {
+    create: (payload: {
+      artisan_id: string;
+      institution_name: string;
+      institution_type: string;
+      inquiry_type: InquiryType;
+      message: string;
+      contact_email?: string;
+    }) => request<InstitutionalInquiry>("/inquiries", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+    list: (params?: { artisan_id?: string; status?: InquiryStatus }) => {
+      const query = new URLSearchParams();
+      if (params?.artisan_id) query.set("artisan_id", params.artisan_id);
+      if (params?.status) query.set("status", params.status);
+      const suffix = query.toString() ? `?${query.toString()}` : "";
+      return request<InstitutionalInquiry[]>(`/inquiries${suffix}`);
+    },
+    setStatus: (id: string, status: InquiryStatus) =>
+      request<InstitutionalInquiry>(`/inquiries/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
   },
 };
 

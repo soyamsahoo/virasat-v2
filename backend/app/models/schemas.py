@@ -191,13 +191,25 @@ class ArtworkRead(ArtworkBase, Model):
     verification_status: VerificationStatus = VerificationStatus.PENDING
 
 
+class KeypointMatchPoint(BaseModel):
+    """A matched ORB keypoint projected onto both artworks' pixel space."""
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
 class SimilarArtwork(Model):
     artwork_id: uuid.UUID
     heritage_id: str
     title: str
+    artisan_name: str = ""
+    artwork_image_url: str = ""
     phash_distance: int
     dhash_distance: int
     orb_match_score: float = 0.0
+    orb_verified: bool = False
+    keypoint_pairs: list[KeypointMatchPoint] = []
 
 
 # --------------------------------------------------------------------------
@@ -279,3 +291,42 @@ class VerificationResult(Model):
     passport: Optional[HeritagePassportRead] = None
     events: list[ProvenanceEventRead] = []
     checked_at: datetime
+
+
+# --------------------------------------------------------------------------
+# Institutional patronage hub (zero-commerce model)
+# --------------------------------------------------------------------------
+class InquiryType(str, Enum):
+    GRANT = "grant"
+    EXHIBITION = "exhibition"
+    COMMISSION = "commission"
+    RESEARCH = "research"
+    PATRONAGE = "patronage"
+    COLLABORATION = "collaboration"
+
+
+class InquiryStatus(str, Enum):
+    NEW = "new"
+    CONTACT_MADE = "contact_made"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+
+
+class InstitutionalInquiryCreate(BaseModel):
+    artisan_id: uuid.UUID
+    institution_name: str = Field(min_length=1, max_length=255)
+    institution_type: str = Field(default="Institution", max_length=100)
+    inquiry_type: InquiryType = InquiryType.PATRONAGE
+    message: str = Field(min_length=10)
+    contact_email: Optional[str] = Field(default=None, max_length=255)
+
+
+class InstitutionalInquiryUpdate(BaseModel):
+    status: InquiryStatus
+
+
+class InstitutionalInquiryRead(InstitutionalInquiryCreate, Model):
+    id: uuid.UUID
+    status: InquiryStatus = InquiryStatus.NEW
+    artisan_name: str = ""
+    created_at: datetime

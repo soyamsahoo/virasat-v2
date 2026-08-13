@@ -29,30 +29,40 @@ class OrbMatchReport:
     homography_confidence: float
 
 
+def _good_matches(
+    payload_a: bytes, payload_b: bytes, min_matches: int = MIN_ORB_MATCHES,
+) -> tuple[list | None, np.ndarray | None, np.ndarray | None]:
+    """Return (good_matches, points_a Nx2, points_b Nx2) or (None, None, None)."""
+    if not payload_a or not payload_b:
+        return None, None, None
+    try:
+        coords_a, desc_a = unpack_orb(payload_a)
+        coords_b, desc_b = unpack_orb(payload_b)
+    except ValueError:
+        return None, None, None
+    if len(desc_a) < 2 or len(desc_b) < 2:
+        return None, None, None
+
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(desc_a, desc_b)
+    good = [m for m in matches if m.distance <= MATCH_DISTANCE_CAP]
+    if len(good) < min_matches:
+        return None, None, None
+
+    points_a = np.asarray([coords_a[m.queryIdx] for m in good], dtype=np.float32)
+    points_b = np.asarray([coords_b[m.trainIdx] for m in good], dtype=np.float32)
+    return good, points_a, points_b
+
+
 def match_orb_descriptors(
     payload_a: bytes, payload_b: bytes,
     min_matches: int = MIN_ORB_MATCHES,
     min_inliers: int = MIN_RANSAC_INLIERS,
 ) -> OrbMatchReport:
     """Brute-force Hamming matching with RANSAC homography verification."""
-    if not payload_a or not payload_b:
+    good, points_a, points_b = _good_matches(payload_a, payload_b, min_matches)
+    if good is None:
         return OrbMatchReport(False, 0, 0, 0.0)
-    try:
-        coords_a, desc_a = unpack_orb(payload_a)
-        coords_b, desc_b = unpack_orb(payload_b)
-    except ValueError:
-        return OrbMatchReport(False, 0, 0, 0.0)
-    if len(desc_a) < 2 or len(desc_b) < 2:
-        return OrbMatchReport(False, 0, 0, 0.0)
-
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    matches = bf.match(desc_a, desc_b)
-    good = [m for m in matches if m.distance <= MATCH_DISTANCE_CAP]
-    if len(good) < min_matches:
-        return OrbMatchReport(False, len(good), 0, 0.0)
-
-    points_a = np.asarray([coords_a[m.queryIdx] for m in good], dtype=np.float32)
-    points_b = np.asarray([coords_b[m.trainIdx] for m in good], dtype=np.float32)
 
     homography, mask = cv2.findHomography(points_a, points_b, cv2.RANSAC, 5.0)
     if homography is None or mask is None:
@@ -66,6 +76,41 @@ def match_orb_descriptors(
         inliers=inliers,
         homography_confidence=round(float(confidence), 4),
     )
+
+
+def match_orb_visual(
+    payload_a: bytes, payload_b: bytes, max_pairs: int = 32,
+) -> list[tuple[float, float, float, float]]:
+    """Evenly sampled matched keypoint pairs for the inspector overlay.
+
+    Returns (x1, y1, x2, y2) tuples in each source image's pixel space,
+    drawn from the RANSAC-inlier set when a homography is found, else from
+    the raw Hamming-filtered matches.
+    """
+    good, points_a, points_b = _good_matches(payload_a, payload_b, min_matches=8)
+    if good is None:
+        return []
+
+    homography, mask = cv2.findHomography(points_a, points_b, cv2.RANSAC, 5.0)
+    if homography is not None and mask is not None:
+        inliers = np.flatnonzero(mask)
+        if len(inliers) >= 8:
+            pts_a, pts_b = points_a[inliers], points_b[inliers]
+        else:
+            pts_a, pts_b = points_a, points_b
+    else:
+        pts_a, pts_b = points_a, points_b
+
+    count = min(len(pts_a), max_pairs)
+    if count == 0:
+        return []
+    indices = np.linspace(0, len(pts_a) - 1, count, dtype=int)
+    pairs = [
+        (float(pts_a[i][0]), float(pts_a[i][1]),
+         float(pts_b[i][0]), float(pts_b[i][1]))
+        for i in indices
+    ]
+    return pairs
 
 
 def score_similarity(phash_distance: int, dhash_distance: int, orb_report: OrbMatchReport) -> float:

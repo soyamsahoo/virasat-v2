@@ -19,6 +19,16 @@ DO $$ BEGIN
         ('created', 'registered', 'verified_by_ngo', 'exhibited', 'transferred', 'archived');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+    CREATE TYPE inquiry_type_enum AS ENUM
+        ('grant', 'exhibition', 'commission', 'research', 'patronage', 'collaboration');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE inquiry_status_enum AS ENUM
+        ('new', 'contact_made', 'accepted', 'declined');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ---------------------------------------------------------------------------
 -- 1. TRADITIONS
 -- ---------------------------------------------------------------------------
@@ -136,6 +146,29 @@ CREATE TABLE IF NOT EXISTS stories (
 );
 
 -- ---------------------------------------------------------------------------
+-- 9. ARTWORK IMAGE BLOBS (archived plate photographs)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS artwork_image_blobs (
+    artwork_id UUID PRIMARY KEY REFERENCES artworks(id) ON DELETE CASCADE,
+    image BYTEA NOT NULL
+);
+
+-- ---------------------------------------------------------------------------
+-- 10. INSTITUTIONAL INQUIRIES (patronage hub — zero-commerce model)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS institutional_inquiries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    artisan_id UUID REFERENCES artisans(id) ON DELETE CASCADE,
+    institution_name VARCHAR(255) NOT NULL,
+    institution_type VARCHAR(100) DEFAULT 'Institution',
+    inquiry_type inquiry_type_enum NOT NULL DEFAULT 'patronage',
+    message TEXT NOT NULL,
+    contact_email VARCHAR(255),
+    status inquiry_status_enum DEFAULT 'new',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ---------------------------------------------------------------------------
 -- Indexes for fast querying
 -- ---------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_artworks_heritage_id    ON artworks(heritage_id);
@@ -145,6 +178,8 @@ CREATE INDEX IF NOT EXISTS idx_artisans_region         ON artisans(region_id);
 CREATE INDEX IF NOT EXISTS idx_artisans_tradition      ON artisans(primary_tradition_id);
 CREATE INDEX IF NOT EXISTS idx_events_artwork          ON provenance_events(artwork_id);
 CREATE INDEX IF NOT EXISTS idx_stories_artisan         ON stories(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_inquiries_artisan       ON institutional_inquiries(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_inquiries_status        ON institutional_inquiries(status);
 
 -- ---------------------------------------------------------------------------
 -- Deterministic heritage ID generator
@@ -197,6 +232,8 @@ ALTER TABLE regions           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE field_agents      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE artisans          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE artworks          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE artwork_image_blobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE heritage_passports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE provenance_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stories           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE institutional_inquiries ENABLE ROW LEVEL SECURITY;

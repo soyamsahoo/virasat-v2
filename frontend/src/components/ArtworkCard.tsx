@@ -1,34 +1,39 @@
 import { Link } from "react-router-dom";
-import { Layers, ScanLine } from "lucide-react";
+import { ScanLine, ZoomIn } from "lucide-react";
 import type { Artwork } from "../types";
 import { palette } from "../lib/tokens";
+import { ArtworkPlate } from "./ArtworkPlate";
+import { useDeepZoom } from "./DeepZoomModal";
 
-/** Museum-plate card with a graceful gradient stand-in for the artwork. */
+/** Museum-plate card: archived photograph (or gradient stand-in) with a
+ *  deep-zoom inspector on the plate and a passport link below. */
 export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+  const deepZoom = useDeepZoom();
+
   return (
-    <Link
-      to={`/passport?id=${artwork.heritage_id}`}
-      className="group block overflow-hidden rounded-sm hairline transition-shadow duration-500 hover:shadow-glow"
-    >
-      <div
-        className="relative flex h-56 items-center justify-center overflow-hidden"
-        style={{
-          background:
-            "radial-gradient(420px 260px at 30% 20%, rgba(197,160,89,0.28), transparent 60%), linear-gradient(160deg, #1c160e 0%, #2a2013 55%, #17130c 100%)",
-        }}
+    <div className="group block overflow-hidden rounded-sm hairline transition-shadow duration-500 hover:shadow-glow">
+      <button
+        onClick={() =>
+          deepZoom.open({
+            src: artwork.primary_image_url || null,
+            title: artwork.title,
+            subtitle: `${artwork.heritage_id} · ${artwork.artisan_name}`,
+          })
+        }
+        className="block w-full text-left"
+        title="Open deep-zoom inspector"
       >
-        <Layers
-          size={84}
-          strokeWidth={0.7}
-          className="text-museum-gold/50 transition-transform duration-700 group-hover:scale-110"
-        />
-        <span className="absolute bottom-3 right-4 font-display text-[11px] tracking-widest2 text-museum-gold/90">
-          {artwork.heritage_id}
-        </span>
-        <span className="absolute left-4 top-3 flex items-center gap-1.5 rounded-full border border-museum-gold/40 bg-museum-black/60 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] text-museum-gold">
-          <ScanLine size={11} /> Fingerprinted
-        </span>
-      </div>
+        <ArtworkPlate
+          src={artwork.primary_image_url || null}
+          title={artwork.heritage_id}
+          className="h-56 w-full"
+        >
+          <span className="absolute left-4 top-3 flex items-center gap-1.5 rounded-full border border-museum-gold/40 bg-museum-black/60 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] text-museum-gold">
+            {artwork.primary_image_url ? <ZoomIn size={11} /> : <ScanLine size={11} />}
+            {artwork.primary_image_url ? "Inspect plate" : "Fingerprinted"}
+          </span>
+        </ArtworkPlate>
+      </button>
       <div className="border-t border-museum-parchment/10 p-5">
         <p className="text-[10px] uppercase tracking-[0.24em] text-museum-gold/80">
           {artwork.creation_year} · {artwork.tradition_title || "Pattachitra"}
@@ -40,13 +45,14 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
           {artwork.artisan_name} — {artwork.medium?.split(",")[0] ?? "Cotton Patta"}
           {artwork.dimensions ? ` · ${artwork.dimensions}` : ""}
         </p>
-        <p
-          className="mt-3 text-[10px] uppercase tracking-[0.2em]"
+        <Link
+          to={`/passport?id=${artwork.heritage_id}`}
+          className="mt-3 inline-block text-[10px] uppercase tracking-[0.2em]"
           style={{ color: palette.gold }}
         >
           View passport →
-        </p>
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }

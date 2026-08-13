@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, ScrollText } from "lucide-react";
+import { ArrowLeft, Handshake, MapPin, ScrollText } from "lucide-react";
 import { api } from "../lib/api";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { StatusBadge } from "../components/StatusBadge";
 import { LineageTree } from "../components/LineageTree";
 import { Timeline } from "../components/Timeline";
 import { ArtworkCard } from "../components/ArtworkCard";
+import { InquiryModal } from "../components/InquiryModal";
 import type { ArtisanDetail, Artwork, ProvenanceEvent, Story } from "../types";
 
 export function ArtisanPage() {
@@ -16,6 +17,7 @@ export function ArtisanPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [events, setEvents] = useState<ProvenanceEvent[]>([]);
   const [openStory, setOpenStory] = useState<string | null>(null);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
@@ -92,6 +94,20 @@ export function ArtisanPage() {
             <p className="mt-6 text-[11px] uppercase tracking-[0.24em] text-museum-parchment/45">
               {artisan.artwork_count} fingerprinted works · {artisan.story_count} oral stories recorded
             </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                onClick={() => setInquiryOpen(true)}
+                className="flex items-center gap-2 rounded-sm border border-museum-gold/70 px-6 py-3 text-[10px] uppercase tracking-[0.22em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
+              >
+                <Handshake size={14} /> Institutional inquiry · Grant / Exhibition
+              </button>
+              <Link
+                to="/dashboard/inquiries"
+                className="flex items-center gap-2 rounded-sm border border-museum-parchment/25 px-6 py-3 text-[10px] uppercase tracking-[0.22em] text-museum-parchment/70 transition-colors hover:border-museum-gold hover:text-museum-gold"
+              >
+                Patronage inbox
+              </Link>
+            </div>
           </ScrollReveal>
         </div>
         <ScrollReveal delay={0.15}>
@@ -141,9 +157,16 @@ export function ArtisanPage() {
                   </span>
                 </button>
                 {openStory === story.id && (
-                  <p className="whitespace-pre-line border-t border-museum-parchment/10 p-5 text-sm leading-relaxed text-museum-parchment/65">
-                    {story.transcript}
-                  </p>
+                  <div className="border-t border-museum-parchment/10">
+                    {story.audio_recording_url && (
+                      <div className="border-b border-museum-parchment/10 p-4">
+                        <audio controls src={story.audio_recording_url} className="h-9 w-full" />
+                      </div>
+                    )}
+                    <p className="whitespace-pre-line p-5 text-sm leading-relaxed text-museum-parchment/65">
+                      {story.transcript}
+                    </p>
+                  </div>
                 )}
               </div>
             ))}
@@ -162,6 +185,14 @@ export function ArtisanPage() {
           </ScrollReveal>
         )}
       </section>
+
+      {inquiryOpen && artisan && (
+        <InquiryModal
+          artisanId={artisan.id}
+          artisanName={artisan.full_name}
+          onClose={() => setInquiryOpen(false)}
+        />
+      )}
     </main>
   );
 }

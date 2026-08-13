@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, X, ShieldCheck } from "lucide-react";
+import { Menu, X, ShieldCheck, Sprout } from "lucide-react";
 
 const links = [
   { to: "/", label: "The Archive" },
   { to: "/#map", label: "Explore" },
   { to: "/verify", label: "Verify" },
   { to: "/passport?id=VR-OD-PAT-2026-000001", label: "Passport" },
+  { to: "/agent", label: "Field Agent" },
+  { to: "/dashboard/inquiries", label: "Patronage" },
 ];
 
 export function Navbar() {
