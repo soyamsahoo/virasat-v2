@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Camera, FileDown, Image, ImageUp, Search, ShieldAlert, X } from "lucide-react";
+import { Camera, Image, ImageUp, Search, ShieldAlert, X } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { checkBlur, type BlurReport } from "../lib/blurCheck";
 import { VerificationSeal } from "../components/VerificationSeal";
 import { StatusBadge } from "../components/StatusBadge";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { KeypointMatchInspector } from "../components/KeypointMatchInspector";
+import { PassportCard } from "../components/PassportCard";
 import type { ImageVerificationResult, SimilarArtwork, VerificationResult } from "../types";
 
 export function VerificationPage() {
@@ -98,13 +99,17 @@ export function VerificationPage() {
     try {
       const form = new FormData();
       form.append("file", photo.blob, photo.name || "plate-photo.jpg");
+      console.log("[Verify] Uploading image for verification:", photo.name, photo.blob.size, "bytes");
       const response = await api.verify.byImage(form);
+      console.log("[Verify] Response received:", response);
       setImageResult(response);
       setResult(response.result);
     } catch (err) {
+      console.error("[Verify] Error:", err);
       setImageResult(null);
       setResult(null);
-      setError(err instanceof ApiError ? err.message : "Verification service unavailable.");
+      const message = err instanceof ApiError ? err.message : "Verification service unavailable. Ensure the backend is running.";
+      setError(message);
     } finally {
       setUploading(false);
     }
@@ -273,10 +278,16 @@ export function VerificationPage() {
       )}
 
       {result && !error && (
-        <div className="mt-14 grid gap-10 lg:grid-cols-[240px_1fr]">
-          <ScrollReveal className="flex items-start justify-center lg:justify-start">
+        <div className="mt-14 space-y-10">
+          <ScrollReveal className="flex items-start justify-center">
             <VerificationSeal outcome={result.outcome} />
           </ScrollReveal>
+
+          {result.passport && result.artwork && result.artisan && (
+            <ScrollReveal delay={0.1}>
+              <PassportCard artwork={result.artwork} artisan={result.artisan} passport={result.passport} />
+            </ScrollReveal>
+          )}
 
           <ScrollReveal delay={0.1}>
             <div className="rounded-sm hairline p-7">
@@ -321,23 +332,10 @@ export function VerificationPage() {
                 <p className="break-all">computed {result.computed_sha256 ?? "—"}</p>
               </div>
 
-              {result.passport && (
-                <div className="mt-6 flex flex-wrap gap-3 border-t border-museum-parchment/10 pt-6">
-                  <Link
-                    to={`/passport?id=${encodeURIComponent(result.heritage_id)}`}
-                    className="rounded-sm border border-museum-gold/70 px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
-                  >
-                    View passport document
-                  </Link>
-                  <a
-                    href={api.passports.pdfUrl(result.heritage_id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-sm border border-museum-parchment/25 px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] text-museum-parchment/80 transition-colors hover:border-museum-gold hover:text-museum-gold"
-                  >
-                    <FileDown size={13} /> PDF certificate
-                  </a>
-                </div>
+              {!result.passport && (
+                <p className="mt-6 text-center text-sm text-museum-parchment/60">
+                  No passport issued yet for this artwork.
+                </p>
               )}
             </div>
           </ScrollReveal>

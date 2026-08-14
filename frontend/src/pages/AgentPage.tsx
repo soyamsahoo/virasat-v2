@@ -209,7 +209,9 @@ export function AgentPage() {
           form.append("medium", draft.artwork_medium);
           form.append("dimensions", draft.artwork_dimensions);
           form.append("auto_passport", "true");
+          console.log("[Agent] Uploading artwork:", draft.artwork_title, "with image:", photo.name);
           const response = await api.artworks.upload(form);
+          console.log("[Agent] Upload response:", response);
           setResult(response);
         } else {
           setNotice(`Artisan ${artisan.full_name} onboarded. (No photograph attached.)`);
