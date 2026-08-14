@@ -6,13 +6,13 @@
     "medium": "Cotton Patta with Tamarind seed adhesive, chalk & conch-shell ground, mineral pigments, lacquer seal",
     "creation_year": 2026,
     "artisan_ref": "Gopinath Moharana",
-    "blur_score": 287.4,
+    "blur_score": 3505.74,
     "passport": {
       "issued": true,
       "issued_at": "2026-01-15T00:00:00+00:00"
     },
-    "phash_signature": "f894687ec8dfec0add55bc48695a4ec7ac3e87e50e67ff72fd45883bad63355c",
-    "dhash_signature": "e651caa22ea9a2dfd7dff957c664c6f12d2b1407f95c081d55ef133f7b2eaf6c",
+    "phash_signature": "ebc42a3b6e2e81f0",
+    "dhash_signature": "078682a68a5b1165",
     "primary_image_url": "media/artworks/artwork-01.jpg"
   },
   {
@@ -22,9 +22,9 @@
     "medium": "Cotton Patta with Tamarind seed adhesive, mineral pigments",
     "creation_year": 2024,
     "artisan_ref": "Gopinath Moharana",
-    "blur_score": 310.2,
-    "phash_signature": "1f048bc762030f552b7d9c4f8f98ab8ddd56652c277f2e8d8c5edee9f32870c6",
-    "dhash_signature": "6ad04fdd4bbe885447d6afaf74b175e8d3e1a711262b46436a617e1b1fab8e5b",
+    "blur_score": 15783.93,
+    "phash_signature": "d4466eb17a9c318e",
+    "dhash_signature": "e4c4e494d89aa0f0",
     "primary_image_url": "media/artworks/artwork-02.jpg"
   },
   {
@@ -34,13 +34,13 @@
     "medium": "Cotton Patta with chalk & conch-shell ground, mineral pigments",
     "creation_year": 2025,
     "artisan_ref": "Shyamsundar Moharana",
-    "blur_score": 246.8,
+    "blur_score": 5678.73,
     "passport": {
       "issued": true,
       "issued_at": "2025-11-02T00:00:00+00:00"
     },
-    "phash_signature": "5d084004a6f8da3d6b56b656587a51c2f40b3acbe0597f2dcba069e0c67457c0",
-    "dhash_signature": "bf8af69edd5422d7a3ec795d502ed62720004bc9127d908d926f695d69054b39",
+    "phash_signature": "abb5d0cb832ba86c",
+    "dhash_signature": "49d4174d5555550b",
     "primary_image_url": "media/artworks/artwork-03.jpg"
   },
   {
@@ -50,13 +50,13 @@
     "medium": "Cotton Patta with Tamarind seed adhesive, mineral pigments",
     "creation_year": 2026,
     "artisan_ref": "Aditya Moharana",
-    "blur_score": 241.3,
+    "blur_score": 49094.81,
     "passport": {
       "issued": true,
       "issued_at": "2026-03-21T00:00:00+00:00"
     },
-    "phash_signature": "ffda9199257434c302fb55973f09c30fbffe6f7cd0cecbfac9b89b1f304078e6",
-    "dhash_signature": "388e62918240a85d9a93aee07395018971774dda466cf24e8ef58741ebdb5399",
+    "phash_signature": "8c6ce4b1539e5c99",
+    "dhash_signature": "ddb633613996bae8",
     "primary_image_url": "media/artworks/artwork-04.jpg"
   },
   {
@@ -66,9 +66,9 @@
     "medium": "Cotton Patta with mineral pigments",
     "creation_year": 2023,
     "artisan_ref": "Aditya Moharana",
-    "blur_score": 198.6,
-    "phash_signature": "cd0efce0ba0e1ca0eb2ce63ae95252388d9b3a93d9cf9522f844a34b35025e61",
-    "dhash_signature": "42b840223519c27ceb29884ab571041d07039487c91991294e7cf042e6ec97ad",
+    "blur_score": 15364.23,
+    "phash_signature": "993826e536c66f32",
+    "dhash_signature": "94b2b2aabab2aaaa",
     "primary_image_url": "media/artworks/artwork-05.jpg"
   },
   {
@@ -78,9 +78,9 @@
     "medium": "Cotton Patta with chalk ground, mineral pigments",
     "creation_year": 2025,
     "artisan_ref": "Kanchana Sahoo",
-    "blur_score": 273.1,
-    "phash_signature": "967969328b4c1a01b0d67d65592563bf4dbdec7a57ad4ffeb7e26c177a4f4165",
-    "dhash_signature": "ba05da2957ff77c88d0a044b7f94aee2754e397fa2ab1db6285d8ac5a2210672",
+    "blur_score": 15502.88,
+    "phash_signature": "f5069a3ac949bc6c",
+    "dhash_signature": "4a4c54d206165550",
     "primary_image_url": "media/artworks/artwork-06.jpg"
   },
   {
@@ -90,9 +90,9 @@
     "medium": "Cotton Patta with mineral pigments",
     "creation_year": 2024,
     "artisan_ref": "Sunita Sahoo",
-    "blur_score": 222.9,
-    "phash_signature": "2e89520ce60ed9199ae7409c8b41744829bc63a31719f5e5f4a55d842808d98d",
-    "dhash_signature": "60d7e53de1ba4c6d031538c5eedf80c3f9331f6018d281581bdf2795f66b83cd",
+    "blur_score": 950.35,
+    "phash_signature": "945166e74768636e",
+    "dhash_signature": "e0bcb8fc7cf8bef4",
     "primary_image_url": "media/artworks/artwork-07.jpg"
   },
   {
@@ -102,9 +102,9 @@
     "medium": "Cotton Patta with chalk & conch-shell ground, mineral pigments",
     "creation_year": 2026,
     "artisan_ref": "Devraj Sahoo",
-    "blur_score": 165.7,
-    "phash_signature": "a2f55bb3ff3fe0a0526b7ca45eaf9f6412f7e4aefda0526fd4754fad3d30702c",
-    "dhash_signature": "0f75bc47806de4896da7d82cd4dec4963d31c649566378df2dfb49cb339c9270",
+    "blur_score": 16923.68,
+    "phash_signature": "956b789447c73b30",
+    "dhash_signature": "ccb25dc4d4d4dcaa",
     "primary_image_url": "media/artworks/artwork-08.jpg"
   }
 ]
