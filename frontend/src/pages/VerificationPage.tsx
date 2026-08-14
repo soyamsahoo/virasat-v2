@@ -37,7 +37,11 @@ export function VerificationPage() {
       setResult(await api.verify.check(heritageId));
     } catch (err) {
       setResult(null);
-      setError(err instanceof ApiError ? err.message : "Verification service unavailable.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Verification service is unreachable — check that the backend is running, then refresh.",
+      );
     } finally {
       setLoading(false);
     }
@@ -156,7 +160,10 @@ export function VerificationPage() {
       console.error("[Verify] Error:", err);
       setImageResult(null);
       setResult(null);
-      const message = err instanceof ApiError ? err.message : "Verification service unavailable. Ensure the backend is running.";
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Verification service is unreachable — check that the backend is running, then try again.";
       setError(message);
     } finally {
       setUploading(false);
@@ -311,10 +318,7 @@ export function VerificationPage() {
       {error && (
         <div className="mx-auto mt-8 flex max-w-2xl items-center gap-3 rounded-sm border border-[#C0392B]/60 bg-[#2A1010]/60 p-5 text-sm text-museum-parchment/80">
           <ShieldAlert size={18} className="shrink-0 text-[#E05C4B]" />
-          <span>
-            {error}
-            {!photo && " — the identifier may not be registered."}
-          </span>
+          <span>{error}</span>
         </div>
       )}
 
