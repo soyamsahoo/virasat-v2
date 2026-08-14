@@ -23,6 +23,10 @@
     "creation_year": 2024,
     "artisan_ref": "Gopinath Moharana",
     "blur_score": 15783.93,
+    "passport": {
+      "issued": true,
+      "issued_at": "2026-02-10T00:00:00+00:00"
+    },
     "phash_signature": "d4466eb17a9c318e",
     "dhash_signature": "e4c4e494d89aa0f0",
     "primary_image_url": "media/artworks/artwork-02.jpg"
@@ -67,6 +71,10 @@
     "creation_year": 2023,
     "artisan_ref": "Aditya Moharana",
     "blur_score": 15364.23,
+    "passport": {
+      "issued": true,
+      "issued_at": "2026-04-14T00:00:00+00:00"
+    },
     "phash_signature": "993826e536c66f32",
     "dhash_signature": "94b2b2aabab2aaaa",
     "primary_image_url": "media/artworks/artwork-05.jpg"
@@ -79,6 +87,10 @@
     "creation_year": 2025,
     "artisan_ref": "Kanchana Sahoo",
     "blur_score": 15502.88,
+    "passport": {
+      "issued": true,
+      "issued_at": "2026-05-01T00:00:00+00:00"
+    },
     "phash_signature": "f5069a3ac949bc6c",
     "dhash_signature": "4a4c54d206165550",
     "primary_image_url": "media/artworks/artwork-06.jpg"
@@ -91,6 +103,10 @@
     "creation_year": 2024,
     "artisan_ref": "Sunita Sahoo",
     "blur_score": 950.35,
+    "passport": {
+      "issued": true,
+      "issued_at": "2026-05-19T00:00:00+00:00"
+    },
     "phash_signature": "945166e74768636e",
     "dhash_signature": "e0bcb8fc7cf8bef4",
     "primary_image_url": "media/artworks/artwork-07.jpg"
@@ -103,6 +119,10 @@
     "creation_year": 2026,
     "artisan_ref": "Devraj Sahoo",
     "blur_score": 16923.68,
+    "passport": {
+      "issued": true,
+      "issued_at": "2026-06-08T00:00:00+00:00"
+    },
     "phash_signature": "956b789447c73b30",
     "dhash_signature": "ccb25dc4d4d4dcaa",
     "primary_image_url": "media/artworks/artwork-08.jpg"

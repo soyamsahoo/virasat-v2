@@ -111,7 +111,7 @@ export function ArtisanPage() {
           </ScrollReveal>
         </div>
         <ScrollReveal delay={0.15}>
-          <LineageTree lineage={artisan.lineage} />
+          <LineageTree lineage={artisan.lineage} artisanId={artisan.id} />
         </ScrollReveal>
       </header>
 

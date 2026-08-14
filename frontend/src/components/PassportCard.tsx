@@ -91,9 +91,11 @@ export function PassportCard({ artwork, artisan, passport }: PassportCardProps) 
                 >
                   Verify this passport
                 </Link>
-                {passport && (
+                {passport?.pdf_passport_url && (
                   <a
-                    href={api.passports.pdfUrl(artwork.heritage_id)}
+                    href={passport.pdf_passport_url.startsWith("http")
+                      ? passport.pdf_passport_url
+                      : api.passports.pdfUrl(artwork.heritage_id)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 rounded-sm border border-[#0D0D0D] px-5 py-2 text-[10px] uppercase tracking-[0.22em] text-[#0D0D0D] transition-colors hover:bg-[#0D0D0D] hover:text-[#F5F2EB]"

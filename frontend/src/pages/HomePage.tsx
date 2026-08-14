@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { Landmark, ScrollText, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { api } from "../lib/api";
 import { plateUrlFor } from "../lib/plates";
+import { mockPassportFor } from "../lib/passports";
 import { Hero } from "../components/Hero";
 import { MapExplorer } from "../components/MapExplorer";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ArtworkCard } from "../components/ArtworkCard";
 import { PassportCard } from "../components/PassportCard";
 import { StatusBadge } from "../components/StatusBadge";
-import type { Artisan, Artwork, Tradition } from "../types";
+import type { Artisan, Artwork, HeritagePassport, Tradition } from "../types";
 
 interface ArtworkFilters {
   state: string;
@@ -183,6 +184,8 @@ export function HomePage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [allArtworks, setAllArtworks] = useState<Artwork[]>([]);
   const [spotlightArtwork, setSpotlightArtwork] = useState<Artwork | null>(null);
+  const [spotlightPassport, setSpotlightPassport] = useState<HeritagePassport | null>(null);
+  const [showpiecePassport, setShowpiecePassport] = useState<HeritagePassport | null>(null);
   const [filters, setFilters] = useState<ArtworkFilters>(EMPTY_FILTERS);
 
   useEffect(() => {
@@ -200,6 +203,12 @@ export function HomePage() {
     void api.artworks.get("VR-OD-PAT-2026-000001")
       .then(setSpotlightArtwork)
       .catch(() => setSpotlightArtwork(MOCK_ARTWORKS[0]));
+    void api.passports.get("VR-OD-PAT-2026-000001")
+      .then(setSpotlightPassport)
+      .catch(() => setSpotlightPassport(mockPassportFor("VR-OD-PAT-2026-000001")));
+    void api.passports.get("VR-OD-PAT-2026-000008")
+      .then(setShowpiecePassport)
+      .catch(() => setShowpiecePassport(mockPassportFor("VR-OD-PAT-2026-000008")));
   }, []);
 
   useEffect(() => {
@@ -248,7 +257,7 @@ export function HomePage() {
           traditions: traditions.length || 1,
           artisans: artisans.length || 6,
           artworks: artworks.length || 8,
-          passports: 3,
+          passports: 8,
         }}
       />
 
@@ -274,6 +283,27 @@ export function HomePage() {
                 pigment on cotton patta, the cloth holding the weight of darshan. It
                 emerges as you scroll, as if drawn from the archive itself.
               </p>
+              {showpiecePassport && (
+                <div className="mt-6 border-t border-museum-gold/15 pt-5">
+                  <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.22em] text-museum-parchment/70">
+                    <ShieldCheck size={13} className="text-museum-gold" />
+                    Passport issued{" "}
+                    {new Date(showpiecePassport.issued_at).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    <span className="text-museum-gold/50">·</span>
+                    SHA-256 {showpiecePassport.cryptographic_hash.slice(0, 18)}…
+                  </p>
+                  <Link
+                    to="/passport?id=VR-OD-PAT-2026-000008"
+                    className="mt-4 inline-flex items-center gap-2 rounded-sm border border-museum-gold/60 px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
+                  >
+                    Open the heritage passport →
+                  </Link>
+                </div>
+              )}
             </figcaption>
           </figure>
         </ScrollReveal>
@@ -482,7 +512,7 @@ export function HomePage() {
             <PassportCard
               artwork={spotlightArtwork}
               artisan={spotlightArtisan}
-              passport={null}
+              passport={spotlightPassport}
             />
           </ScrollReveal>
         )}

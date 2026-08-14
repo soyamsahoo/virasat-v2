@@ -261,24 +261,56 @@ class MemoryRepository:
         return True
 
     def _lineage(self, artisan_id: str, depth: int) -> list[dict]:
+        """Full family tree around an artisan: walk up to the family root,
+        then collect every descendant of that root (ancestors, siblings and
+        descendants included). Mirrors the SQL recursive CTE in depth limits
+        and ordering (generation ascending, stable within a generation)."""
         members: list[dict] = []
+        seen: set[str] = set()
+
+        def member(row: dict, family_depth: int) -> dict:
+            return {
+                "id": row["id"],
+                "full_name": row["full_name"],
+                "generation_number": row.get("generation_number", 1),
+                "parent_artisan_id": row.get("parent_artisan_id"),
+                "depth": max(1, min(4, family_depth)),
+                "verification_status": row.get("verification_status", "pending"),
+            }
+
+        # 1) Walk up the parent chain to the family root (max 4 generations).
+        chain: list[dict] = []
         current = self.artisans.get(artisan_id)
-        while current and depth <= 4:
-            members.append(
-                {
-                    "id": current["id"],
-                    "full_name": current["full_name"],
-                    "generation_number": current.get("generation_number", 1),
-                    "parent_artisan_id": current.get("parent_artisan_id"),
-                    "depth": depth,
-                    "verification_status": current.get("verification_status", "pending"),
-                }
-            )
+        while current and len(chain) < 4 and current["id"] not in seen:
+            chain.append(current)
+            seen.add(current["id"])
             current = self.artisans.get(current.get("parent_artisan_id") or "")
-            depth += 1
-        # Match the SQL RECURSIVE CTE: generation numbers ascending,
-        # furthest ancestor first, the queried artisan last.
-        return list(reversed(members))
+        root = chain[-1]
+
+        # 2) Breadth-first sweep down from the root gathers the whole family,
+        #    siblings and cousins included; cap at 4 generations below the root.
+        seen = set()
+        frontier = [root["id"]]
+        generation_of_root = int(root.get("generation_number", 1))
+        while frontier:
+            nxt: list[str] = []
+            for member_id in frontier:
+                row = self.artisans.get(member_id)
+                if not row or member_id in seen:
+                    continue
+                seen.add(member_id)
+                family_depth = int(row.get("generation_number", 1)) - generation_of_root + 1
+                members.append(member(row, family_depth))
+                if family_depth >= 4:
+                    continue
+                for other in self.artisans.values():
+                    if other.get("parent_artisan_id") == member_id and other["id"] not in seen:
+                        nxt.append(other["id"])
+            frontier = nxt
+
+        # Stable within a generation: preserve the family sweep order.
+        members.sort(key=lambda m: (m["generation_number"], m["depth"]))
+        return members
 
     # ----------------------------------------------------------- traditions
     async def list_traditions(self) -> list[dict]:
@@ -852,26 +884,53 @@ class PostgresRepository:
         return await self.get_artisan(str(record["id"]))
 
     async def lineage(self, artisan_id: str) -> list[dict]:
+        """Full family tree: ancestors walked up to the family root, then the
+        whole branch of the root swept downwards — siblings and descendants
+        included. Ordered by generation ascending, stable within a generation.
+
+        Mirrors MemoryRepository._lineage so both backends agree.
+        """
         async with self.pool.acquire() as conn:
             return self._rows(
                 await conn.fetch(
                     """
-                    WITH RECURSIVE artisan_lineage AS (
+                    WITH RECURSIVE up AS (
                         SELECT a.id, a.full_name, a.generation_number,
-                               a.parent_artisan_id, a.verification_status, 1 AS depth
+                               a.parent_artisan_id, a.verification_status,
+                               a.created_at, 1 AS depth
                         FROM artisans a
                         WHERE a.id = $1
                         UNION ALL
+                        SELECT p.id, p.full_name, p.generation_number,
+                               p.parent_artisan_id, p.verification_status,
+                               p.created_at, u.depth + 1
+                        FROM artisans p
+                        JOIN up u ON p.id = u.parent_artisan_id
+                        WHERE u.depth < 4
+                    ),
+                    family_root AS (
+                        SELECT id FROM up
+                        ORDER BY generation_number ASC, depth DESC
+                        LIMIT 1
+                    ),
+                    down AS (
                         SELECT a.id, a.full_name, a.generation_number,
-                               a.parent_artisan_id, a.verification_status, l.depth + 1
+                               a.parent_artisan_id, a.verification_status,
+                               a.created_at, 1 AS family_depth
                         FROM artisans a
-                        JOIN artisan_lineage l ON a.parent_artisan_id = l.id
-                        WHERE l.depth < 4
+                        JOIN family_root r ON a.id = r.id
+                        UNION ALL
+                        SELECT ch.id, ch.full_name, ch.generation_number,
+                               ch.parent_artisan_id, ch.verification_status,
+                               ch.created_at, d.family_depth + 1
+                        FROM artisans ch
+                        JOIN down d ON ch.parent_artisan_id = d.id
+                        WHERE d.family_depth < 4
                     )
                     SELECT id, full_name, generation_number, parent_artisan_id,
-                           verification_status, depth
-                    FROM artisan_lineage
-                    ORDER BY generation_number ASC
+                           verification_status, family_depth AS depth
+                    FROM down
+                    ORDER BY generation_number ASC, created_at ASC, depth ASC
                     """,
                     uuid.UUID(artisan_id),
                 )

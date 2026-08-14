@@ -62,5 +62,49 @@
     "tradition_ref": "Odisha Pattachitra",
     "verification_status": "pending",
     "profile_image_url": ""
+  },
+  {
+    "full_name": "Bharati Moharana",
+    "pehchan_card_id": "PCH-OD-11024",
+    "biography": "Bharati Moharana, born 1968, is the daughter of Gopinath's workshop and keeper of its border conventions. Trained at the bench beside her brother Shyamsundar, she draws the red-and-gold borders (baaja) that frame every family patta, and drills the border-drawing exercise into apprentices before they are allowed near the figures.",
+    "generation_number": 2,
+    "parent_ref": "Gopinath Moharana",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "field_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Nalinikanta Moharana",
+    "pehchan_card_id": "PCH-OD-11025",
+    "biography": "Nalinikanta Moharana, born 2010, is Aditya's son and the youngest member of the Moharana workshop's fifth working generation. A school student who paints after class under the oil lamp, he practises the iconometric proportions of the Dashavatara against his grandmother's old pattas.",
+    "generation_number": 4,
+    "parent_ref": "Aditya Moharana",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "pending",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Rukmani Sahoo",
+    "pehchan_card_id": "PCH-OD-11034",
+    "biography": "Rukmani Sahoo, born 1975, is Kanchana's elder daughter. She paints the miniature palm-leaf-style pattas of the Sahoo household and keeps the family ledger of commissions, marriages and festival requests that has been written in her grandmother's hand since the 1960s.",
+    "generation_number": 2,
+    "parent_ref": "Kanchana Sahoo",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "field_verified",
+    "profile_image_url": ""
+  },
+  {
+    "full_name": "Nihar Sahoo",
+    "pehchan_card_id": "PCH-OD-11035",
+    "biography": "Nihar Sahoo, born 2008, is Sunita's son and Devraj's constant benchmate. He trains in the women's cooperative's export line, fills colour where Devraj draws the line, and paints the tiger-face panels of the Raghurajpur festival masks.",
+    "generation_number": 3,
+    "parent_ref": "Sunita Sahoo",
+    "region_ref": "Raghurajpur",
+    "tradition_ref": "Odisha Pattachitra",
+    "verification_status": "pending",
+    "profile_image_url": ""
   }
 ]

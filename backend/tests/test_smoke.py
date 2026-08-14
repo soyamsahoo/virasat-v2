@@ -25,7 +25,7 @@ def test_catalogue_seeded(client):
     assert traditions[0]["artisan_count"] >= 6
 
     assert len(client.get("/api/v1/regions").json()) == 2
-    assert len(client.get("/api/v1/artisans").json()) == 6
+    assert len(client.get("/api/v1/artisans").json()) == 10
     assert len(client.get("/api/v1/artworks").json()) == 8
 
 
@@ -63,28 +63,43 @@ def test_artwork_list_filters(client):
 
 
 # ----------------------------------------------------------------- lineages
-def test_lineage_self_only_when_no_ancestors(client):
+def test_lineage_full_family_tree(client):
     artisans = client.get("/api/v1/artisans").json()
     gopinath = next(a for a in artisans if a["full_name"] == "Gopinath Moharana")
     detail = client.get(f"/api/v1/artisans/{gopinath['id']}").json()
-    assert len(detail["lineage"]) == 1
-    assert detail["lineage"][-1]["id"] == gopinath["id"]
+    # Root of the Moharana house: the whole branch — 2 children, 1 grandchild,
+    # 1 great-grandchild — is returned as the family tree.
+    assert len(detail["lineage"]) == 5
+    assert [m["generation_number"] for m in detail["lineage"]] == [1, 2, 2, 3, 4]
+    assert detail["lineage"][0]["id"] == gopinath["id"]
     assert detail["artwork_count"] == 2
     assert detail["story_count"] == 1
 
 
-def test_lineage_multiple_generations(client):
+def test_lineage_tree_seen_from_descendant(client):
     artisans = client.get("/api/v1/artisans").json()
     aditya = next(a for a in artisans if a["full_name"] == "Aditya Moharana")
     detail = client.get(f"/api/v1/artisans/{aditya['id']}").json()
-    assert len(detail["lineage"]) == 3
-    assert [m["generation_number"] for m in detail["lineage"]] == [1, 2, 3]
+    assert len(detail["lineage"]) == 5
+    assert [m["generation_number"] for m in detail["lineage"]] == [1, 2, 2, 3, 4]
     assert detail["lineage"][0]["full_name"] == "Gopinath Moharana"
-    assert detail["lineage"][-1]["id"] == aditya["id"]
+    assert any(m["id"] == aditya["id"] for m in detail["lineage"])
 
     shyam = next(a for a in artisans if a["full_name"] == "Shyamsundar Moharana")
     shyam_detail = client.get(f"/api/v1/artisans/{shyam['id']}").json()
-    assert len(shyam_detail["lineage"]) == 2
+    assert len(shyam_detail["lineage"]) == 5
+    assert shyam_detail["lineage"][-1]["full_name"] == "Nalinikanta Moharana"
+    assert {"Shyamsundar Moharana", "Bharati Moharana"} <= {
+        m["full_name"] for m in shyam_detail["lineage"]
+    }
+
+    nalinikanta = next(
+        a for a in artisans if a["full_name"] == "Nalinikanta Moharana"
+    )
+    nalinikanta_detail = client.get(f"/api/v1/artisans/{nalinikanta['id']}").json()
+    assert len(nalinikanta_detail["lineage"]) == 5
+    assert nalinikanta_detail["lineage"][0]["full_name"] == "Gopinath Moharana"
+    assert nalinikanta_detail["lineage"][-1]["id"] == nalinikanta["id"]
 
 
 # --------------------------------------------------------------- verification
@@ -172,6 +187,29 @@ def test_verify_rotated_seed_plate_via_orb_fallback(client):
 
 
 # ------------------------------------------------------------------- passports
+def test_every_seed_artwork_has_a_passport(client):
+    """Every registered work — including the showpiece and all fingerprinted
+    plates — must carry an issued passport, not only a subset."""
+    seeded = [
+        "VR-OD-PAT-2026-000001", "VR-OD-PAT-2026-000002",
+        "VR-OD-PAT-2026-000003", "VR-OD-PAT-2026-000004",
+        "VR-OD-PAT-2026-000005", "VR-OD-PAT-2026-000006",
+        "VR-OD-PAT-2026-000007", "VR-OD-PAT-2026-000008",
+    ]
+    for heritage_id in seeded:
+        passport = client.get(f"/api/v1/passports/{heritage_id}")
+        assert passport.status_code == 200, heritage_id
+        body = passport.json()
+        assert len(body["cryptographic_hash"]) == 64
+        assert body["issued_at"]
+        assert body["qr_code_url"].endswith(f"/{heritage_id}/qr")
+        assert body["pdf_passport_url"].endswith(f"/{heritage_id}/pdf")
+
+    showpiece = client.get("/api/v1/passports/VR-OD-PAT-2026-000008")
+    assert showpiece.status_code == 200
+    assert showpiece.json()["issued_at"].startswith("2026-06-08")
+
+
 def test_passport_qr_and_pdf(client):
     qr = client.get("/api/v1/passports/VR-OD-PAT-2026-000001/qr")
     assert qr.status_code == 200

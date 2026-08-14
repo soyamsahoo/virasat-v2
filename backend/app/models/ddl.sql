@@ -205,22 +205,38 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------------
--- Recursive CTE: fetch up to 4 generations of artisan lineage (ascending)
+-- Full family tree: walk up to the family root, then sweep the whole branch
+-- down (ancestors, siblings and descendants; up to 4 generations each way).
+-- Ordered by generation ascending, stable within a generation.
 --   Usage:
---     WITH RECURSIVE artisan_lineage AS (
+--     WITH RECURSIVE up AS (
 --         SELECT a.id, a.full_name, a.generation_number, a.parent_artisan_id,
 --                1 AS depth
 --         FROM artisans a
 --         WHERE a.id = :artisan_id
 --         UNION ALL
+--         SELECT p.id, p.full_name, p.generation_number, p.parent_artisan_id,
+--                u.depth + 1
+--         FROM artisans p
+--         JOIN up u ON p.id = u.parent_artisan_id
+--         WHERE u.depth < 4
+--     ),
+--     family_root AS (
+--         SELECT id FROM up ORDER BY generation_number ASC, depth DESC LIMIT 1
+--     ),
+--     down AS (
 --         SELECT a.id, a.full_name, a.generation_number, a.parent_artisan_id,
---                l.depth + 1
---         FROM artisans a
---         JOIN artisan_lineage l ON a.parent_artisan_id = l.id
---         WHERE l.depth < 4
+--                1 AS family_depth
+--         FROM artisans a JOIN family_root r ON a.id = r.id
+--         UNION ALL
+--         SELECT ch.id, ch.full_name, ch.generation_number, ch.parent_artisan_id,
+--                d.family_depth + 1
+--         FROM artisans ch
+--         JOIN down d ON ch.parent_artisan_id = d.id
+--         WHERE d.family_depth < 4
 --     )
---     SELECT id, full_name, generation_number, parent_artisan_id, depth
---     FROM artisan_lineage
+--     SELECT id, full_name, generation_number, parent_artisan_id, family_depth
+--     FROM down
 --     ORDER BY generation_number ASC;
 
 -- ---------------------------------------------------------------------------
