@@ -4,6 +4,7 @@ import { Landmark, ScrollText, ShieldCheck, SlidersHorizontal, X } from "lucide-
 import { api } from "../lib/api";
 import { Hero } from "../components/Hero";
 import { MapExplorer } from "../components/MapExplorer";
+import { ScrollMesh } from "../components/ScrollMesh";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ArtworkCard } from "../components/ArtworkCard";
 import { PassportCard } from "../components/PassportCard";
@@ -99,6 +100,13 @@ export function HomePage() {
       />
 
       <MapExplorer />
+
+      {/* ------------------------------------------- living cloth unroll */}
+      <ScrollMesh
+        src="/patachitra/jagannath-subhadra-balabhadra.jpg"
+        title="Jagannath, Subhadra & Balabhadra"
+        subtitle="Pattachitra from Raghurajpur, Odisha — the trinity of Puri rendered in mineral pigment. The cloth unrolls with the weight of its own history."
+      />
 
       {/* ------------------------------------------------------- traditions */}
       <section className="mx-auto max-w-7xl px-6 py-24">
