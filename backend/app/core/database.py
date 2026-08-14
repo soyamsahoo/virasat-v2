@@ -108,6 +108,10 @@ class MemoryRepository:
         region_ids = {self._norm(row["village"]): row["id"] for row in self.regions.values()}
         trad_ids = {self._norm(row["title"]): row["id"] for row in self.traditions.values()}
 
+        for row in self.agents.values():
+            if row.get("region_ref"):
+                row["assigned_region_id"] = region_ids.get(self._norm(row["region_ref"]))
+
         for row in artisans or []:
             row.setdefault("id", _uid())
             row.setdefault("created_at", _now())
