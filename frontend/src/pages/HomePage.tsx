@@ -10,6 +10,7 @@ import { ArtworkCard } from "../components/ArtworkCard";
 import { PassportCard } from "../components/PassportCard";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Artisan, Artwork, Tradition } from "../types";
+import plateUrl from "../assets/patachitra/jagannath-subhadra-balabhadra.jpg";
 
 interface ArtworkFilters {
   state: string;
@@ -103,7 +104,7 @@ export function HomePage() {
 
       {/* ------------------------------------------- living cloth unroll */}
       <ScrollMesh
-        src="/patachitra/jagannath-subhadra-balabhadra.jpg"
+        src={plateUrl}
         title="Jagannath, Subhadra & Balabhadra"
         subtitle="Pattachitra from Raghurajpur, Odisha — the trinity of Puri rendered in mineral pigment. The cloth unrolls with the weight of its own history."
       />
