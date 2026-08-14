@@ -11,6 +11,13 @@ import { PassportCard } from "../components/PassportCard";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Artisan, Artwork, Tradition } from "../types";
 import plateUrl from "../assets/patachitra/jagannath-subhadra-balabhadra.jpg";
+import patachitra1 from "/media/artworks/dasavtar.jpg";
+import patachitra2 from "/media/artworks/jagannath subhadra balabhadra.jpg";
+import patachitra3 from "/media/artworks/kanchi vijaya pattachitra.jpg";
+import patachitra4 from "/media/artworks/Odisha_Pattachitara_Depicting_Unconditional_Love_between_Radha_Krushna.jpg";
+import patachitra5 from "/media/artworks/Pattachitra-Art-An-Expression-Of-Mythology-And-Folklore.jpg";
+import patachitra6 from "/media/artworks/1_JBfvOVgosFoehRl32eJDiw.jpg";
+import patachitra7 from "/media/artworks/Extrait_de_Chandi_Mangal_de_Hazra_Chitrakar_(Naya_Bengale)_(1439702942).jpg";
 
 interface ArtworkFilters {
   state: string;
@@ -313,6 +320,94 @@ export function HomePage() {
             />
           </ScrollReveal>
         )}
+      </section>
+
+      {/* ------------------------------------------- living cloth gallery */}
+      <section className="border-y border-museum-gold/15 bg-museum-black/30">
+        <div className="mx-auto max-w-7xl px-6 py-24">
+          <ScrollReveal className="mb-16 text-center">
+            <p className="eyebrow text-museum-gold">The Living Cloth</p>
+            <h2 className="mt-3 font-display text-3xl text-museum-parchment md:text-5xl">
+              Scrolls That Remember Every Hand
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm text-museum-parchment/60">
+              Each Pattachitra scroll is a living document — unrolled for darshan,
+              rolled for safekeeping. Scroll through the gallery to unfurl them.
+            </p>
+          </ScrollReveal>
+
+          <div className="space-y-32">
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra1}
+                title="Dashavatara Patta"
+                subtitle="The ten avatars of Vishnu in mineral pigment on cotton — Gopinath Moharana's masterwork from Raghurajpur."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra2}
+                title="Jagannath, Subhadra & Balabhadra"
+                subtitle="The Puri trinity rendered in the traditional chitrakar style — the cloth holds the weight of darshan."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra3}
+                title="Kanchi Vijaya Patta"
+                subtitle="The victory procession of Jagannath — a narrative scroll depicting the Kanchi expedition in vivid mineral colours."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra4}
+                title="Radha-Krishna: Unconditional Love"
+                subtitle="Divine love in the grove — delicate brushwork and natural pigments capturing the eternal rasa."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra5}
+                title="Pattachitra: Expression of Mythology"
+                subtitle="A compendium scroll — multiple narratives woven into a single continuous cloth of devotion."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra6}
+                title="Traditional Pattachitra Composition"
+                subtitle="Border patterns and narrative registers — the grammar of Odisha's scroll tradition in one frame."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+
+            <ScrollReveal>
+              <ScrollMesh
+                src={patachitra7}
+                title="Chandi Mangal — Hazra Chitrakar"
+                subtitle="From the Naya village tradition — Bengal's scroll painting heritage, the Goddess in her fierce grace."
+                planeWidth={6.5}
+                scrollHeight={250}
+              />
+            </ScrollReveal>
+          </div>
+        </div>
       </section>
 
       {/* ------------------------------------------------------------- CTA */}

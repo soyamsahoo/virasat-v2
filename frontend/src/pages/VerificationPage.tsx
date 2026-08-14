@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Camera, FileDown, ImageUp, Search, ShieldAlert, X } from "lucide-react";
+import { Camera, FileDown, Image, ImageUp, Search, ShieldAlert, X } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { checkBlur, type BlurReport } from "../lib/blurCheck";
 import { VerificationSeal } from "../components/VerificationSeal";
@@ -20,6 +20,7 @@ export function VerificationPage() {
   const [imageResult, setImageResult] = useState<ImageVerificationResult | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function runVerify(event?: FormEvent) {
@@ -60,6 +61,21 @@ export function VerificationPage() {
     setResult(null);
     setError(null);
     void checkBlur(file).then(setPhotoBlur).catch(() => setPhotoBlur({ score: 0, pass: false }));
+  }
+
+  function openImagePicker(source: "camera" | "gallery") {
+    setShowImagePicker(false);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    if (source === "camera") {
+      input.capture = "environment";
+    }
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) onPickPhoto(file);
+    };
+    input.click();
   }
 
   function clearPhoto() {
@@ -136,7 +152,7 @@ export function VerificationPage() {
         </div>
 
         <ScrollReveal delay={0.05} className="mt-6">
-          <label
+          <div
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);
@@ -173,6 +189,10 @@ export function VerificationPage() {
                 </span>
               </>
             )}
+            <button
+              onClick={() => setShowImagePicker(true)}
+              className="hidden"
+            />
             <input
               ref={fileRef}
               type="file"
@@ -183,7 +203,7 @@ export function VerificationPage() {
                 e.target.value = "";
               }}
             />
-          </label>
+          </div>
 
           {photoBlur && (
             <div
@@ -329,6 +349,37 @@ export function VerificationPage() {
           {imageResult.matches.map((match) => (
             <MatchCard key={match.artwork_id} match={match} />
           ))}
+        </div>
+      )}
+
+      {/* Image picker modal */}
+      {showImagePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowImagePicker(false)}>
+          <div className="bg-museum-black rounded-sm border border-museum-gold/30 p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-center text-sm font-medium text-museum-parchment mb-4">Select image source</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => openImagePicker("camera")}
+                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
+              >
+                <Camera size={28} className="text-museum-gold" />
+                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Camera</span>
+              </button>
+              <button
+                onClick={() => openImagePicker("gallery")}
+                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
+              >
+                <Image size={28} className="text-museum-gold" />
+                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Gallery</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowImagePicker(false)}
+              className="mt-4 w-full rounded-sm border border-museum-parchment/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-museum-parchment/70 hover:border-museum-gold hover:text-museum-gold transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </main>

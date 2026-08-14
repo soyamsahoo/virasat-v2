@@ -5,6 +5,7 @@ import {
   Check,
   CloudOff,
   CloudUpload,
+  Image,
   MapPin,
   Mic,
   Pause,
@@ -79,6 +80,7 @@ export function AgentPage() {
   const [recording, setRecording] = useState(false);
   const [recordingPaused, setRecordingPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -120,6 +122,21 @@ export function AgentPage() {
     } catch {
       setBlur({ score: 0, pass: false });
     }
+  }
+
+  function openImagePicker(source: "camera" | "gallery") {
+    setShowImagePicker(false);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    if (source === "camera") {
+      input.capture = "environment";
+    }
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) void onPickPhoto(file);
+    };
+    input.click();
   }
 
   async function startRecording() {
@@ -498,22 +515,15 @@ export function AgentPage() {
               <p className="text-[10px] uppercase tracking-[0.2em] text-museum-parchment/50">
                 Photograph — flat, even light, camera steady
               </p>
-              <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-museum-gold/50 p-6 text-center transition-colors hover:border-museum-gold">
+              <button
+                onClick={() => setShowImagePicker(true)}
+                className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-museum-gold/50 p-6 text-center w-full transition-colors hover:border-museum-gold"
+              >
                 <Camera size={22} className="text-museum-gold" />
                 <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
                   {photo ? "Replace photo" : "Capture / choose photo"}
                 </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void onPickPhoto(file);
-                  }}
-                />
-              </label>
+              </button>
               {blur && (
                 <div className={`mt-3 rounded-sm border p-3 text-xs ${blur.pass ? "border-museum-emerald/60 text-[#7FBF94]" : "border-[#C0392B]/60 text-[#E05C4B]"}`}>
                   Local quality pre-check: Laplacian variance{" "}
@@ -589,6 +599,37 @@ export function AgentPage() {
               : "Stored on this device; synced automatically when signal returns"}
           </p>
         </section>
+      )}
+
+      {/* Image picker modal */}
+      {showImagePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowImagePicker(false)}>
+          <div className="bg-museum-black rounded-sm border border-museum-gold/30 p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-center text-sm font-medium text-museum-parchment mb-4">Select image source</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => openImagePicker("camera")}
+                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
+              >
+                <Camera size={28} className="text-museum-gold" />
+                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Camera</span>
+              </button>
+              <button
+                onClick={() => openImagePicker("gallery")}
+                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
+              >
+                <Image size={28} className="text-museum-gold" />
+                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Gallery</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowImagePicker(false)}
+              className="mt-4 w-full rounded-sm border border-museum-parchment/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-museum-parchment/70 hover:border-museum-gold hover:text-museum-gold transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-10 flex items-center justify-between">
