@@ -90,7 +90,7 @@ export function LineageTree({ lineage, artisanId }: LineageTreeProps) {
                           {!isSelf && (
                             <Link
                               to={`/artisans/${member.id}`}
-                              className="text-[9px] uppercase tracking-[0.18em] text-museum-gold hover:underline"
+                              className="flex min-h-10 items-center rounded-sm px-2.5 text-[9px] uppercase tracking-[0.18em] text-museum-gold hover:underline"
                             >
                               Record →
                             </Link>

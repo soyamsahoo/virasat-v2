@@ -123,8 +123,9 @@ export function HomePage() {
             <img
               src={plateUrlFor("VR-OD-PAT-2026-000008") ?? undefined}
               alt="Jagannath, Subhadra & Balabhadra — Pattachitra from Raghurajpur"
-              className="h-[70vh] w-full bg-museum-black/40 object-cover"
-              loading="eager"
+              className="h-[40vh] w-full bg-museum-black/40 object-cover md:h-[70vh]"
+              loading="lazy"
+              decoding="async"
             />
             <figcaption className="border-t border-museum-gold/15 bg-museum-black/40 p-8 text-center md:p-10">
               <p className="eyebrow text-museum-gold">The Showpiece</p>
@@ -278,17 +279,17 @@ export function HomePage() {
             {hasActiveFilters && (
               <button
                 onClick={() => setFilters(EMPTY_FILTERS)}
-                className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-museum-gold hover:underline"
+                className="flex min-h-10 items-center gap-1.5 px-3 py-2 text-xs uppercase tracking-[0.2em] text-museum-gold hover:underline"
               >
-                <X size={12} /> Clear
+                <X size={14} /> Clear
               </button>
             )}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <select
               value={filters.state}
               onChange={(e) => setFilter("state", e.target.value)}
-              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-3 text-base text-museum-parchment/80 outline-none focus:border-museum-gold/70"
             >
               <option value="">All states</option>
               {states.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -296,7 +297,7 @@ export function HomePage() {
             <select
               value={filters.tradition_id}
               onChange={(e) => setFilter("tradition_id", e.target.value)}
-              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-3 text-base text-museum-parchment/80 outline-none focus:border-museum-gold/70"
             >
               <option value="">All traditions</option>
               {traditions.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
@@ -304,7 +305,7 @@ export function HomePage() {
             <select
               value={filters.artisan_id}
               onChange={(e) => setFilter("artisan_id", e.target.value)}
-              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-3 text-base text-museum-parchment/80 outline-none focus:border-museum-gold/70"
             >
               <option value="">All artisans</option>
               {artisans.map((a) => <option key={a.id} value={a.id}>{a.full_name}</option>)}
@@ -312,7 +313,7 @@ export function HomePage() {
             <select
               value={filters.medium}
               onChange={(e) => setFilter("medium", e.target.value)}
-              className="truncate rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+              className="truncate rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-3 text-base text-museum-parchment/80 outline-none focus:border-museum-gold/70"
             >
               <option value="">All mediums</option>
               {mediums.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -320,7 +321,7 @@ export function HomePage() {
             <select
               value={filters.century}
               onChange={(e) => setFilter("century", e.target.value)}
-              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-2.5 text-xs text-museum-parchment/80 outline-none focus:border-museum-gold/70"
+              className="rounded-sm border border-museum-parchment/20 bg-museum-black px-3 py-3 text-base text-museum-parchment/80 outline-none focus:border-museum-gold/70"
             >
               <option value="">All centuries</option>
               {centuries.map((c) => <option key={c} value={String(c)}>{c}th century</option>)}

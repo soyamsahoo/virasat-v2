@@ -20,7 +20,6 @@
         rgba(139, 69, 19, 0.12),
         transparent 60%
       );
-    background-attachment: fixed;
   }
   ::selection {
     background: #c5a059;

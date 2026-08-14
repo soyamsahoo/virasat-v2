@@ -460,7 +460,7 @@ export function MapExplorer() {
           clickEvent.preventDefault();
           void navigate(`/passport?id=${encodeURIComponent(heritageId)}`);
         });
-        new m.default.Popup({ closeButton: false, offset: 12 })
+        new m.default.Popup({ closeButton: true, closeOnClick: false, offset: 12 })
           .setLngLat((event.lngLat ?? { lng: 0, lat: 0 }) as { lng: number; lat: number })
           .setDOMContent(node)
           .addTo(map);
@@ -492,8 +492,8 @@ export function MapExplorer() {
         onClick={() => selectVillage(v)}
         className="cursor-pointer"
       >
-        <circle cx={x} cy={y} r={selected ? 14 : 9} fill={CATEGORIES[v.category].color} opacity="0.95" />
-        <circle cx={x} cy={y} r={selected ? 18 : 13} fill="none" stroke={palette.parchment} strokeWidth="1" opacity="0.6" />
+        <circle cx={x} cy={y} r={selected ? 18 : 13} fill={CATEGORIES[v.category].color} opacity="0.95" />
+        <circle cx={x} cy={y} r={selected ? 24 : 19} fill="none" stroke={palette.parchment} strokeWidth="1" opacity="0.6" />
         <text x={x} y={y + 22} textAnchor="middle" fill={selected ? palette.gold : palette.parchment} fontSize="10" letterSpacing="1">
           {v.name.toUpperCase()}
         </text>
@@ -516,7 +516,7 @@ export function MapExplorer() {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
           <button
             onClick={() => { setActiveCategory("all"); gsap.to(ringRef.current, { opacity: 0.4, duration: 0.6 }); }}
-            className={`rounded-full border px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
+            className={`flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors ${
               activeCategory === "all"
                 ? "border-museum-gold bg-museum-gold text-museum-black"
                 : "border-museum-parchment/25 text-museum-parchment/70 hover:border-museum-gold/70 hover:text-museum-gold"
@@ -528,11 +528,11 @@ export function MapExplorer() {
             <button
               key={key}
               onClick={() => setActiveCategory(key)}
-              className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                activeCategory === key
-                  ? "border-museum-gold bg-museum-gold/15 text-museum-gold"
-                  : "border-museum-parchment/25 text-museum-parchment/70 hover:border-museum-gold/70 hover:text-museum-gold"
-              }`}
+              className={`flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors ${
+              activeCategory === key
+                ? "border-museum-gold bg-museum-gold/15 text-museum-gold"
+                : "border-museum-parchment/25 text-museum-parchment/70 hover:border-museum-gold/70 hover:text-museum-gold"
+            }`}
             >
               <span className="h-2 w-2 rounded-full" style={{ background: CATEGORIES[key].color }} />
               {CATEGORIES[key].label}
@@ -544,7 +544,7 @@ export function MapExplorer() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* -------------------------------------------------------- map */}
         <div className="relative lg:col-span-2">
-          <div className="relative h-[480px] overflow-hidden rounded-sm hairline bg-[#101010] md:h-[560px]">
+          <div className="relative h-[60dvh] min-h-[400px] overflow-hidden rounded-sm hairline bg-[#101010] md:h-[560px]">
             {mapFailed ? (
               <svg viewBox="0 0 700 480" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
                 {[70, 140, 210, 280].map((r, i) => (

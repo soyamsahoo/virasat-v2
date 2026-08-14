@@ -32,7 +32,8 @@ export interface QueuedIntake {
       dimensions?: string;
       creation_year: number;
     };
-    artwork_image_data_url: string | null;
+    artwork_image_data_url?: string | null;
+    artwork_image_blob?: Blob | null;
   };
 }
 
@@ -130,8 +131,15 @@ export async function syncIntake(
       });
     }
 
-    if (intake.payload.artwork_image_data_url) {
-      const blob = await (await fetch(intake.payload.artwork_image_data_url)).blob();
+    if (intake.payload.artwork_image_blob || intake.payload.artwork_image_data_url) {
+      let blob: Blob;
+      if (intake.payload.artwork_image_blob) {
+        blob = intake.payload.artwork_image_blob;
+      } else {
+        const res = await fetch(intake.payload.artwork_image_data_url!);
+        if (!res.ok) throw new Error("Stored photo is no longer readable");
+        blob = await res.blob();
+      }
       const form = new FormData();
       form.append("file", blob, "artwork-capture.jpg");
       form.append("title", intake.payload.artwork.title);

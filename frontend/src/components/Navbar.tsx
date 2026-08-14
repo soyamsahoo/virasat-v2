@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Menu, X, ShieldCheck, Sprout } from "lucide-react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Menu, X, ShieldCheck } from "lucide-react";
 
 const links = [
   { to: "/", label: "The Archive" },
@@ -14,12 +14,33 @@ const links = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = location.hash.slice(1);
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [location.hash]);
 
   return (
     <header
@@ -28,9 +49,10 @@ export function Navbar() {
           ? "bg-museum-black/85 backdrop-blur-md border-b border-museum-gold/20 shadow-gold"
           : "bg-transparent border-b border-transparent"
       }`}
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/" className="group flex items-center gap-3">
+        <Link to="/" className="group flex min-h-11 items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-museum-gold/60 text-museum-gold group-hover:animate-pulse-gold">
             <ShieldCheck size={18} />
           </span>
@@ -71,26 +93,27 @@ export function Navbar() {
         </div>
 
         <button
-          className="text-museum-parchment md:hidden"
+          className="-mr-2 flex h-11 w-11 items-center justify-center text-museum-parchment md:hidden"
           onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
+          aria-expanded={open}
         >
-          {open ? <X size={22} /> : <Menu size={22} />}
+          {open ? <X size={26} /> : <Menu size={26} />}
         </button>
       </nav>
 
       {open && (
         <div className="border-t border-museum-gold/20 bg-museum-black/95 px-6 py-4 md:hidden">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {links.map((link) => (
-              <a
+              <Link
                 key={link.label}
-                href={link.to}
+                to={link.to}
                 onClick={() => setOpen(false)}
-                className="text-sm uppercase tracking-[0.22em] text-museum-parchment/80"
+                className="flex min-h-11 items-center text-sm uppercase tracking-[0.22em] text-museum-parchment/80"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

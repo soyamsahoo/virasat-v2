@@ -76,7 +76,7 @@ export function InquiriesPage() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-full border px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] transition-colors ${
+            className={`flex min-h-10 items-center rounded-full border px-4 py-2 text-[10px] uppercase tracking-[0.18em] transition-colors ${
               filter === f.key
                 ? "border-museum-gold bg-museum-gold text-museum-black"
                 : "border-museum-parchment/25 text-museum-parchment/60 hover:border-museum-gold/70 hover:text-museum-gold"
@@ -87,7 +87,7 @@ export function InquiriesPage() {
         ))}
         <button
           onClick={() => void load()}
-          className="ml-auto flex items-center gap-1.5 rounded-full border border-museum-parchment/25 px-4 py-1.5 text-[10px] uppercase tracking-[0.18em] text-museum-parchment/60 hover:text-museum-gold"
+          className="ml-auto flex min-h-10 items-center gap-1.5 rounded-full border border-museum-parchment/25 px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-museum-parchment/60 hover:text-museum-gold"
         >
           <RefreshCw size={12} /> Refresh
         </button>
@@ -141,7 +141,7 @@ export function InquiriesPage() {
                     key={s}
                     onClick={() => void update(inquiry.id, s)}
                     disabled={inquiry.status === s}
-                    className={`rounded-sm border px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] transition-colors disabled:opacity-30 ${
+                    className={`flex min-h-10 items-center rounded-sm border px-3 py-2.5 text-[9px] uppercase tracking-[0.18em] transition-colors disabled:opacity-30 ${
                       inquiry.status === s
                         ? "border-museum-gold bg-museum-gold text-museum-black"
                         : "border-museum-parchment/25 text-museum-parchment/60 hover:border-museum-gold hover:text-museum-gold"

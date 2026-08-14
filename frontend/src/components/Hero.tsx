@@ -41,7 +41,7 @@ export function Hero({ stats }: { stats: HeroStats }) {
 
         <h1 className="font-display leading-[1.04]">
           <span className="block overflow-hidden">
-            <span className="hero-line block text-[clamp(2.6rem,7vw,6rem)] tracking-widest2 text-museum-parchment">
+            <span className="hero-line block text-[clamp(2.1rem,9vw,4.6rem)] tracking-[0.28em] text-museum-parchment sm:tracking-widest2">
               VIRASAT
             </span>
           </span>

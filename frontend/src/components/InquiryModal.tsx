@@ -51,7 +51,11 @@ export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalPr
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-museum-black/85 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-museum-black/85 p-4 backdrop-blur-sm"
+      style={{ paddingTop: "max(1rem, env(safe-area-inset-top))", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      onClick={onClose}
+    >
       <div
         className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-sm hairline bg-[#14100A] p-7"
         onClick={(e) => e.stopPropagation()}
@@ -65,7 +69,7 @@ export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalPr
               Initiate an inquiry with {artisanName}
             </h2>
           </div>
-          <button onClick={onClose} className="rounded-sm border border-museum-parchment/25 p-2 text-museum-parchment/70 hover:text-museum-gold" aria-label="Close">
+          <button onClick={onClose} className="rounded-sm border border-museum-parchment/25 p-3 text-museum-parchment/70 hover:text-museum-gold" aria-label="Close">
             <X size={16} />
           </button>
         </div>
@@ -77,7 +81,7 @@ export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalPr
               {institution_name} has been connected to {artisanName}'s portfolio. No fees, no marketplace —
               direct patronage only.
             </p>
-            <button onClick={onClose} className="mt-5 rounded-sm bg-museum-gold px-6 py-2.5 text-[10px] uppercase tracking-[0.2em] text-museum-black">
+            <button onClick={onClose} className="mt-5 rounded-sm bg-museum-gold px-6 py-3 text-[10px] uppercase tracking-[0.2em] text-museum-black">
               Close
             </button>
           </div>
@@ -88,12 +92,12 @@ export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalPr
                 <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-museum-parchment/55">Institution *</span>
                 <input value={institution_name} onChange={(e) => setInstitutionName(e.target.value)} required
                   placeholder="e.g. National Museum, New Delhi"
-                  className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-sm text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
+                  className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-base text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
               </label>
               <label className="block">
                 <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-museum-parchment/55">Institution type</span>
                 <select value={institution_type} onChange={(e) => setInstitutionType(e.target.value)}
-                  className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-sm text-museum-parchment focus:border-museum-gold focus:outline-none">
+                  className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-base text-museum-parchment focus:border-museum-gold focus:outline-none">
                   {["Museum", "Art foundation", "Gallery", "Research institute", "Government body", "Cultural department", "Other"].map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
@@ -127,14 +131,14 @@ export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalPr
               <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-museum-parchment/55">Contact email</span>
               <input type="email" value={contact_email} onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="curator@institution.org"
-                className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-sm text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
+                className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-base text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
             </label>
 
             <label className="block">
               <span className="mb-2 block text-[10px] uppercase tracking-[0.2em] text-museum-parchment/55">Message * (min 10 chars)</span>
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} required minLength={10} rows={4}
                 placeholder="Scope of the grant / exhibition / commission, timelines, and what the artisan would receive…"
-                className="w-full resize-y rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-sm text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
+                className="w-full resize-y rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-base text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none" />
             </label>
 
             {error && <p className="text-xs text-[#E05C4B]">{error}</p>}

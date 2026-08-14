@@ -18,7 +18,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { api } from "../lib/api";
-import { checkBlur } from "../lib/blurCheck";
+import { checkBlur, transcodeToJpeg } from "../lib/blurCheck";
 import { enqueueIntake, useQueueSync, type QueuedIntake } from "../lib/offlineQueue";
 import { ArtworkPlate } from "../components/ArtworkPlate";
 import { KeypointMatchInspector } from "../components/KeypointMatchInspector";
@@ -113,8 +113,15 @@ export function AgentPage() {
 
   /* ------------------------------------------------------------- capture */
   async function onPickPhoto(file: File) {
-    const url = URL.createObjectURL(file);
-    setPhoto({ blob: file, url, name: file.name });
+    const converted = await transcodeToJpeg(file);
+    let blob: Blob = file;
+    let name = file.name;
+    if (converted && converted.size < file.size) {
+      blob = converted;
+      name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    }
+    const url = URL.createObjectURL(blob);
+    setPhoto({ blob, url, name });
     setBlur(null);
     try {
       const report = await checkBlur(file);
@@ -164,7 +171,12 @@ export function AgentPage() {
       mediaRef.current = recorder;
       setRecording(true);
       setRecordingSeconds(0);
-      timerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+      timerRef.current = window.setInterval(() => {
+        setRecordingSeconds((s) => {
+          if (s + 1 >= 180) stopRecording();
+          return s + 1;
+        });
+      }, 1000);
     } catch {
       setNotice("Microphone access denied.");
     }
@@ -241,7 +253,7 @@ export function AgentPage() {
             dimensions: draft.artwork_dimensions || undefined,
             creation_year: draft.artwork_year,
           },
-          artwork_image_data_url: photo?.url ?? null,
+          artwork_image_blob: photo?.blob ?? null,
         });
         setQueuedId(id);
         resetWizard();
@@ -282,7 +294,7 @@ export function AgentPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 pb-28 pt-32">
-      <div className={`mb-8 flex items-center justify-between rounded-sm border px-5 py-3 ${online ? "border-museum-emerald/60 bg-museum-emerald/10" : "border-[#C97B3D]/60 bg-[#3A2409]/30"}`}>
+      <div className={`mb-8 flex flex-wrap items-center justify-between gap-2 rounded-sm border px-5 py-3 ${online ? "border-museum-emerald/60 bg-museum-emerald/10" : "border-[#C97B3D]/60 bg-[#3A2409]/30"}`}>
         <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-museum-parchment/80">
           {online ? <Wifi size={14} className="text-[#7FBF94]" /> : <CloudOff size={14} className="text-[#E0A96D]" />}
           {online ? "Online — submissions sync live" : "Offline — intakes queue on this device"}
@@ -359,7 +371,7 @@ export function AgentPage() {
       )}
 
       {/* -------------------------------------------------- stepper */}
-      <div className="mb-10 grid grid-cols-4 gap-2">
+      <div className="mb-10 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {STEPS.map((label, i) => (
           <button
             key={label}
@@ -479,7 +491,7 @@ export function AgentPage() {
                 </span>
               )}
               {draft.story_audio && !recording && (
-                <audio controls src={draft.story_audio} className="h-9 w-64" />
+                <audio controls src={draft.story_audio} className="h-9 w-full max-w-xs" />
               )}
             </div>
           </div>
@@ -657,7 +669,7 @@ export function AgentPage() {
 }
 
 const inputCls =
-  "w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-sm text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none";
+  "w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-4 py-3 text-base text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none";
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -684,7 +696,11 @@ function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: F
     setError(null);
     try {
       const agent = await api.agents.getByBadge(badge.trim());
-      localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
+      try {
+        localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
+      } catch {
+        /* private-mode storage unavailable — keep session */
+      }
       onEnter(agent);
     } catch {
       setError("Badge not found. Register this agent to continue.");
@@ -700,7 +716,11 @@ function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: F
     setError(null);
     try {
       const agent = await api.agents.register(form);
-      localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
+      try {
+        localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
+      } catch {
+        /* private-mode storage unavailable — keep session */
+      }
       onEnter(agent);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");

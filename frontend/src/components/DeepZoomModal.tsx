@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 
@@ -28,6 +28,20 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ dist: number; mid: { x: number; y: number } } | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
 
   const clampOffset = useCallback(
     (next: { x: number; y: number }, s = scale) => {
@@ -63,18 +77,45 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
   }, []);
 
   function onPointerDown(e: React.PointerEvent) {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      pinchRef.current = {
+        dist: Math.hypot(a.x - b.x, a.y - b.y),
+        mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      };
+      dragRef.current = null;
+      return;
+    }
     if (e.button !== 0) return;
     dragRef.current = { startX: e.clientX, startY: e.clientY, ox: offset.x, oy: offset.y };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointersRef.current.size === 2 && pinchRef.current) {
+      const [a, b] = [...pointersRef.current.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (dist > 0) {
+        const factor = dist / pinchRef.current.dist;
+        pinchRef.current = {
+          dist,
+          mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        };
+        if (factor !== 1) zoomTo(factor, pinchRef.current.mid);
+      }
+      return;
+    }
     const drag = dragRef.current;
     if (!drag) return;
     setOffset(clampOffset({ x: drag.ox + (e.clientX - drag.startX), y: drag.oy + (e.clientY - drag.startY) }));
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
     dragRef.current = null;
   }
 
@@ -84,9 +125,12 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-museum-black/97 backdrop-blur-sm">
-      <div className="flex items-center justify-between border-b border-museum-gold/20 px-5 py-3">
-        <div className="min-w-0">
+    <div
+      className="fixed inset-0 z-[100] flex flex-col bg-museum-black/97 backdrop-blur-sm"
+      style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-museum-gold/20 px-5 py-3">
+        <div className="min-w-0 flex-1">
           <p className="eyebrow text-museum-gold">Deep Zoom Inspector</p>
           <p className="truncate font-serif text-lg text-museum-parchment">{target.title}</p>
           {target.subtitle && (
@@ -95,41 +139,41 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => zoomTo(1 / 1.5)}
-            className="rounded-sm border border-museum-parchment/25 p-2 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
+            className="rounded-sm border border-museum-parchment/25 p-3 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
             aria-label="Zoom out"
           >
             <Minus size={16} />
           </button>
-          <span className="min-w-[52px] text-center font-display text-xs tracking-widest text-museum-gold">
+          <span className="hidden min-w-[52px] text-center font-display text-xs tracking-widest text-museum-gold sm:block">
             {Math.round(scale * 100)}%
           </span>
           <button
             onClick={() => zoomTo(1.5)}
-            className="rounded-sm border border-museum-parchment/25 p-2 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
+            className="rounded-sm border border-museum-parchment/25 p-3 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
             aria-label="Zoom in"
           >
             <Plus size={16} />
           </button>
           <button
             onClick={reset}
-            className="rounded-sm border border-museum-parchment/25 p-2 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
+            className="rounded-sm border border-museum-parchment/25 p-3 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
             aria-label="Reset zoom"
           >
             <RotateCcw size={16} />
           </button>
           <button
             onClick={toggleFullscreen}
-            className="rounded-sm border border-museum-parchment/25 p-2 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold"
+            className="hidden rounded-sm border border-museum-parchment/25 p-3 text-museum-parchment/80 hover:border-museum-gold hover:text-museum-gold sm:block"
             aria-label="Toggle fullscreen"
           >
             <Maximize2 size={16} />
           </button>
           <button
             onClick={onClose}
-            className="ml-2 rounded-sm bg-museum-gold p-2 text-museum-black hover:opacity-90"
+            className="ml-1 rounded-sm bg-museum-gold p-3 text-museum-black hover:opacity-90"
             aria-label="Close inspector"
           >
             <X size={16} />
@@ -145,7 +189,6 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onWheel={(e) => {
-          e.preventDefault();
           zoomTo(e.deltaY < 0 ? 1.2 : 1 / 1.2, { x: e.clientX, y: e.clientY });
         }}
       >
@@ -159,18 +202,18 @@ function DeepZoomDialog({ target, onClose }: { target: DeepZoomTarget; onClose: 
               src={target.src}
               alt={target.title}
               draggable={false}
-              className="max-h-[85vh] max-w-full"
+              className="max-h-[80dvh] max-w-full"
               style={{ imageRendering: scale >= 4 ? "pixelated" : undefined }}
               onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
             />
           ) : (
-            <div className="flex h-[60vh] w-[70vw] items-center justify-center border border-museum-gold/30 font-serif text-lg italic text-museum-parchment/50">
+            <div className="flex h-[50vh] w-[70vw] items-center justify-center border border-museum-gold/30 font-serif text-lg italic text-museum-parchment/50">
               No archived photograph — plate stand-in
             </div>
           )}
         </div>
-        <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-sm border border-museum-parchment/15 bg-museum-black/70 px-4 py-1.5 text-[9px] uppercase tracking-[0.24em] text-museum-parchment/50 backdrop-blur">
-          Drag to pan · Scroll or + / − to zoom up to 1000%
+        <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm border border-museum-parchment/15 bg-museum-black/70 px-4 py-1.5 text-[9px] uppercase tracking-[0.24em] text-museum-parchment/50 backdrop-blur">
+          Drag to pan · Pinch or + / − to zoom up to 1000%
         </p>
       </div>
     </div>

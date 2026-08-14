@@ -87,7 +87,7 @@ export function PassportCard({ artwork, artisan, passport }: PassportCardProps) 
               <div className="mt-4 flex flex-wrap justify-center gap-3 md:justify-start">
                 <Link
                   to={`/verify?id=${encodeURIComponent(artwork.heritage_id)}`}
-                  className="rounded-sm bg-[#0D0D0D] px-5 py-2 text-[10px] uppercase tracking-[0.22em] text-[#F5F2EB] transition-opacity hover:opacity-85"
+                  className="flex min-h-11 items-center rounded-sm bg-[#0D0D0D] px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] text-[#F5F2EB] transition-opacity hover:opacity-85"
                 >
                   Verify this passport
                 </Link>
@@ -98,7 +98,7 @@ export function PassportCard({ artwork, artisan, passport }: PassportCardProps) 
                       : api.passports.pdfUrl(artwork.heritage_id)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-sm border border-[#0D0D0D] px-5 py-2 text-[10px] uppercase tracking-[0.22em] text-[#0D0D0D] transition-colors hover:bg-[#0D0D0D] hover:text-[#F5F2EB]"
+                    className="flex min-h-11 items-center gap-1.5 rounded-sm border border-[#0D0D0D] px-5 py-2.5 text-[10px] uppercase tracking-[0.22em] text-[#0D0D0D] transition-colors hover:bg-[#0D0D0D] hover:text-[#F5F2EB]"
                   >
                     <Download size={12} /> PDF certificate
                   </a>

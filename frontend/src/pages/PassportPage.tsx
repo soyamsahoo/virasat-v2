@@ -173,7 +173,7 @@ export function PassportPage() {
               placeholder="VR-OD-PAT-2026-000001"
               spellCheck={false}
               autoCapitalize="characters"
-              className="min-w-0 flex-1 rounded-sm border border-museum-parchment/20 bg-museum-black px-4 py-3 font-mono text-sm text-museum-parchment outline-none transition-colors focus:border-museum-gold/70"
+              className="min-w-0 flex-1 rounded-sm border border-museum-parchment/20 bg-museum-black px-4 py-3 font-mono text-base text-museum-parchment outline-none transition-colors focus:border-museum-gold/70"
             />
             <button
               type="submit"
@@ -200,7 +200,7 @@ export function PassportPage() {
                 key={id}
                 type="button"
                 onClick={() => openLookup(id)}
-                className={`rounded-full border px-3 py-1 font-mono text-[10px] transition-colors ${
+                className={`flex min-h-10 items-center rounded-full border px-3.5 py-2 font-mono text-[11px] transition-colors ${
                   id === heritageId
                     ? "border-museum-gold bg-museum-gold/15 text-museum-gold"
                     : "border-museum-parchment/20 text-museum-parchment/60 hover:border-museum-gold/60 hover:text-museum-gold"

@@ -59,3 +59,30 @@ export async function checkBlur(source: Blob): Promise<BlurReport> {
   const score = Number(variance.toFixed(2));
   return { score, pass: score >= 100 };
 }
+
+/** Re-encode a capture (HEIC/PNG/large JPEG) to a bounded JPEG for the CV pipeline.
+ *
+ * iPhone `capture` inputs arrive as HEIC which server-side OpenCV often can't
+ * decode; converting client-side also shrinks multi-megapixel captures before
+ * the rural network is used. Returns null on unsupported input — callers keep
+ * the original file in that case.
+ */
+export async function transcodeToJpeg(source: Blob, maxDim = 1920, quality = 0.92): Promise<Blob | null> {
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") return null;
+  try {
+    const bitmap = await createImageBitmap(source);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const jpeg = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality),
+    );
+    return jpeg;
+  } catch {
+    return null;
+  }
+}

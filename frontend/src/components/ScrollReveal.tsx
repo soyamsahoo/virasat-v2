@@ -18,10 +18,16 @@ export function ScrollReveal({
   once = true,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     const animation = gsap.fromTo(
       node,
       { autoAlpha: 0, y },
@@ -45,7 +51,7 @@ export function ScrollReveal({
   }, [delay, y, once]);
 
   return (
-    <div ref={ref} className={className} style={{ opacity: 0 }}>
+    <div ref={ref} className={className} style={reduceMotion ? {} : { opacity: 0 }}>
       {children}
     </div>
   );

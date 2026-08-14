@@ -37,6 +37,8 @@ export function ArtworkPlate({
           alt={title ?? "Artwork plate"}
           className={`h-full w-full object-cover ${imgClassName}`}
           onError={() => setFailed(true)}
+          loading="lazy"
+          decoding="async"
           draggable={false}
         />
       ) : (

@@ -9,6 +9,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/apple-touch-icon.png"],
       manifest: {
+        id: "/",
         name: "VIRASAT Field Agent — India's Digital Memory System",
         short_name: "VIRASAT Agent",
         description:
@@ -16,8 +17,7 @@ export default defineConfig({
         theme_color: "#0D0D0D",
         background_color: "#0D0D0D",
         display: "standalone",
-        orientation: "portrait",
-        start_url: "/agent",
+        start_url: "/",
         scope: "/",
         icons: [
           { src: "/icons/icon-144.png", sizes: "144x144", type: "image/png" },

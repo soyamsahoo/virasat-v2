@@ -56,7 +56,6 @@ export function VerificationPage() {
     }
   }, []);
 
-  /* ----------------------------------------------------------- photo flow */
   function onPickPhoto(file: File) {
     if (photo) URL.revokeObjectURL(photo.url);
     const url = URL.createObjectURL(file);
@@ -79,15 +78,29 @@ export function VerificationPage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        if (video.readyState < 1) {
+          await new Promise<void>((resolve) => {
+            const onMeta = () => {
+              video.removeEventListener("loadedmetadata", onMeta);
+              resolve();
+            };
+            video.addEventListener("loadedmetadata", onMeta);
+          });
+        }
+        try {
+          await video.play();
+        } catch {
+          /* iOS can defer play() until the user taps — frames still advance after resume */
+        }
       }
       setCamState("live");
     } catch (err) {
@@ -127,9 +140,9 @@ export function VerificationPage() {
   }
 
   useEffect(() => {
-    void startCamera();
     return () => stopCamera();
-    // Camera lifecycle is managed by explicit buttons; no other deps here.
+    // Camera only starts on explicit user action — visiting ?id= must not
+    // trigger the iOS permission prompt without a tap.
   }, []);
 
   function clearPhoto() {
@@ -187,12 +200,14 @@ export function VerificationPage() {
         </p>
       </ScrollReveal>
 
-      <form onSubmit={runVerify} className="mx-auto mt-10 flex max-w-2xl gap-3">
+      <form onSubmit={runVerify} className="mx-auto mt-10 flex max-w-2xl flex-wrap gap-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="VR-OD-PAT-2026-000001"
-          className="w-full rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-5 py-3.5 font-display text-sm tracking-wider text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none"
+          spellCheck={false}
+          autoCapitalize="characters"
+          className="min-w-0 flex-1 rounded-sm border border-museum-parchment/20 bg-museum-black/60 px-5 py-3.5 font-display text-base tracking-wider text-museum-parchment placeholder:text-museum-parchment/30 focus:border-museum-gold focus:outline-none"
         />
         <button
           type="submit"
@@ -246,10 +261,28 @@ export function VerificationPage() {
                     </>
                   ) : (
                     <>
-                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-museum-gold/30 border-t-museum-gold" />
-                      <p className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
-                        {camState === "starting" ? "Starting camera…" : "Camera ready"}
-                      </p>
+                      {camState === "idle" ? (
+                        <>
+                          <Camera size={26} className="text-museum-gold" />
+                          <p className="max-w-sm text-xs leading-relaxed text-museum-parchment/80">
+                            Live-camera verification never uploads from a gallery. Start the
+                            camera to capture the plate in real time.
+                          </p>
+                          <button
+                            onClick={() => void startCamera()}
+                            className="rounded-sm border border-museum-gold/60 px-5 py-3 text-[10px] uppercase tracking-[0.2em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
+                          >
+                            Start camera
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-8 w-8 animate-spin rounded-full border-2 border-museum-gold/30 border-t-museum-gold" />
+                          <p className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
+                            Starting camera…
+                          </p>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -427,6 +460,7 @@ function MatchCard({ match }: { match: SimilarArtwork }) {
           <img
             src={match.artwork_image_url}
             alt={match.title}
+            loading="lazy"
             className="h-20 w-20 shrink-0 rounded-sm object-cover"
           />
         ) : (
