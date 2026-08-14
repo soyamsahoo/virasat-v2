@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Landmark, ScrollText, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { api } from "../lib/api";
 import { plateUrlFor } from "../lib/plates";
 import { mockPassportFor } from "../lib/passports";
+import { MOCK_ARTWORKS, mockArtisanById } from "../lib/mockRegistry";
 import { Hero } from "../components/Hero";
 import { MapExplorer } from "../components/MapExplorer";
 import { ScrollReveal } from "../components/ScrollReveal";
@@ -28,155 +29,6 @@ const EMPTY_FILTERS: ArtworkFilters = {
   century: "",
 };
 
-/** Static archive fallback: mirrors the seeded registry so the fingerprinted
- *  works (and their plates) stay viewable even when the API is unreachable.
- *  Plates resolve via ``plateUrlFor`` to the bundled public media. */
-const MOCK_ARTWORKS: Artwork[] = [
-  {
-    id: "mock-artwork-01",
-    heritage_id: "VR-OD-PAT-2026-000001",
-    title: "Dashavatara Patta",
-    dimensions: "24 x 18 in",
-    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments, lacquer seal",
-    creation_year: 2026,
-    artisan_id: "mock-artisan-01",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 3505.7,
-    primary_image_url: "/media/artworks/artwork-01.jpg",
-    created_at: "",
-    artisan_name: "Gopinath Moharana",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "master_verified",
-  },
-  {
-    id: "mock-artwork-02",
-    heritage_id: "VR-OD-PAT-2026-000002",
-    title: "Krishna Leela Kriya",
-    dimensions: "12 x 9 in",
-    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments",
-    creation_year: 2024,
-    artisan_id: "mock-artisan-01",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 15783.9,
-    primary_image_url: "/media/artworks/artwork-02.jpg",
-    created_at: "",
-    artisan_name: "Gopinath Moharana",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "master_verified",
-  },
-  {
-    id: "mock-artwork-03",
-    heritage_id: "VR-OD-PAT-2026-000003",
-    title: "Nabagunjara — Cosmic Form of Krishna",
-    dimensions: "30 x 22 in",
-    medium: "Cotton Patta with chalk & conch-shell ground, mineral pigments",
-    creation_year: 2025,
-    artisan_id: "mock-artisan-02",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 5678.7,
-    primary_image_url: "/media/artworks/artwork-03.jpg",
-    created_at: "",
-    artisan_name: "Shyamsundar Moharana",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "field_verified",
-  },
-  {
-    id: "mock-artwork-04",
-    heritage_id: "VR-OD-PAT-2026-000004",
-    title: "Radha-Krishna in the Grove",
-    dimensions: "18 x 14 in",
-    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments",
-    creation_year: 2026,
-    artisan_id: "mock-artisan-03",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 49094.8,
-    primary_image_url: "/media/artworks/artwork-04.jpg",
-    created_at: "",
-    artisan_name: "Aditya Moharana",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "field_verified",
-  },
-  {
-    id: "mock-artwork-05",
-    heritage_id: "VR-OD-PAT-2026-000005",
-    title: "Matsya Avatar on Patta",
-    dimensions: "15 x 11 in",
-    medium: "Cotton Patta with mineral pigments",
-    creation_year: 2023,
-    artisan_id: "mock-artisan-03",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 15364.2,
-    primary_image_url: "/media/artworks/artwork-05.jpg",
-    created_at: "",
-    artisan_name: "Aditya Moharana",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "pending",
-  },
-  {
-    id: "mock-artwork-06",
-    heritage_id: "VR-OD-PAT-2026-000006",
-    title: "Vamana Avatar — Three Strides",
-    dimensions: "20 x 16 in",
-    medium: "Cotton Patta with chalk ground, mineral pigments",
-    creation_year: 2025,
-    artisan_id: "mock-artisan-04",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 15502.9,
-    primary_image_url: "/media/artworks/artwork-06.jpg",
-    created_at: "",
-    artisan_name: "Kanchana Sahoo",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "field_verified",
-  },
-  {
-    id: "mock-artwork-07",
-    heritage_id: "VR-OD-PAT-2026-000007",
-    title: "Kalika Pattachitra",
-    dimensions: "16 x 12 in",
-    medium: "Cotton Patta with mineral pigments",
-    creation_year: 2024,
-    artisan_id: "mock-artisan-05",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 950.4,
-    primary_image_url: "/media/artworks/artwork-07.jpg",
-    created_at: "",
-    artisan_name: "Sunita Sahoo",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "pending",
-  },
-  {
-    id: "mock-artwork-08",
-    heritage_id: "VR-OD-PAT-2026-000008",
-    title: "Jagannath Trinity on Patta",
-    dimensions: "24 x 18 in",
-    medium: "Cotton Patta with chalk & conch-shell ground, mineral pigments",
-    creation_year: 2026,
-    artisan_id: "mock-artisan-06",
-    phash_signature: null,
-    dhash_signature: null,
-    blur_score: 16923.7,
-    primary_image_url: "/media/artworks/artwork-08.jpg",
-    created_at: "",
-    artisan_name: "Devraj Sahoo",
-    tradition_title: "Odisha Pattachitra",
-    origin_state: "Odisha",
-    verification_status: "master_verified",
-  },
-];
 
 export function HomePage() {
   const [traditions, setTraditions] = useState<Tradition[]>([]);
@@ -247,7 +99,8 @@ export function HomePage() {
     setFilters((prev) => ({ ...prev, [key]: value }));
 
   const spotlightArtisan = spotlightArtwork
-    ? artisans.find((a) => a.id === spotlightArtwork.artisan_id) ?? null
+    ? artisans.find((a) => a.id === spotlightArtwork.artisan_id)
+      ?? mockArtisanById(spotlightArtwork.artisan_id)
     : null;
 
   return (

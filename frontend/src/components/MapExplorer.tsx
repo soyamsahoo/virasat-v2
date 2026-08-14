@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Landmark, ChevronRight, Image as ImageIcon, MapPin } from "lucide-react";
@@ -179,6 +179,7 @@ const MOCK_WORKSHOPS: Record<string, WorkshopNode[]> = {
 };
 
 export function MapExplorer() {
+  const navigate = useNavigate();
   const [artisans, setArtisans] = useState<Artisan[]>([]);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [activeCategory, setActiveCategory] = useState<CategoryKey | "all">("all");
@@ -446,14 +447,19 @@ export function MapExplorer() {
         heritage_id?: string; title?: string;
       };
       if (!props.heritage_id) return;
+      const heritageId = props.heritage_id;
       void import("maplibre-gl").then((m) => {
         const node = document.createElement("div");
         node.innerHTML = `
           <p style="font-family:Georgia,serif;font-size:14px;color:#0D0D0D">${props.title ?? ""}</p>
-          <a href="/passport?id=${props.heritage_id}"
+          <a href="/passport?id=${heritageId}"
              style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8B4513">
             Open the heritage passport →
           </a>`;
+        node.querySelector("a")?.addEventListener("click", (clickEvent) => {
+          clickEvent.preventDefault();
+          void navigate(`/passport?id=${encodeURIComponent(heritageId)}`);
+        });
         new m.default.Popup({ closeButton: false, offset: 12 })
           .setLngLat((event.lngLat ?? { lng: 0, lat: 0 }) as { lng: number; lat: number })
           .setDOMContent(node)
