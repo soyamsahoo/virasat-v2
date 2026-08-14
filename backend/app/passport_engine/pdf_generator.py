@@ -70,7 +70,9 @@ def _gi_label(gi_tag: Optional[str]) -> str:
     return f"Geographical Indication Tag #{number} (Odisha)"
 
 
-def _fmt_date(iso: str) -> str:
+def _fmt_date(iso: str | datetime) -> str:
+    if isinstance(iso, datetime):
+        iso = iso.isoformat()
     if not iso:
         return "Not yet issued"
     iso = iso.replace("+00:00", "Z")
@@ -107,9 +109,7 @@ def _text(c: Canvas, x: float, y: float, size: float, value: str,
     c.setFillColor(color)
     start_x = x
     if center:
-        width = stringWidth(text, font, size)
-        if spacing:
-            width += spacing * (len(text) - 1)
+        width = stringWidth(text, font, size) + spacing * (len(text) - 1)
         start_x = x - width / 2
     t = c.beginText(start_x, y)
     t.setFont(font, size)
@@ -117,6 +117,10 @@ def _text(c: Canvas, x: float, y: float, size: float, value: str,
         t.setCharSpace(spacing)
     t.textLine(text)
     c.drawText(t)
+    # PDF text charSpace is graphics state: reset it or every following
+    # draw inherits the last spacing (ReportLab never emits "0 Tc" itself).
+    if spacing:
+        c._code.append("0 Tc")
 
 
 def _image_scale(pil: PILImage.Image, max_w: float, max_h: float) -> tuple[float, float]:
@@ -155,7 +159,11 @@ def generate_passport_pdf(
     _line(c, CONTENT_L, top(132), CONTENT_R, top(132), 0.6, GOLD)
 
     # ------------------------------------------------------- Section B
-    grid_top = 156.0
+    # measured-from-top offsets, mirroring the client-side blueprint:
+    #   150  grid start     183/216/249/282/315/348  row label tops
+    #   378  last row hairline
+    grid_top = 150.0
+    row_anchor = 248.0
     box_x, box_w = 52.0, 178.0
     pil: PILImage.Image | None = None
     if artwork_image_bytes:
@@ -208,45 +216,48 @@ def generate_passport_pdf(
          "Helvetica", 9.5),
     ]
     for k, (label, value, font, size) in enumerate(rows):
-        row_top = grid_top + k * 27
-        _text(c, 248, top(row_top), 6, label, font="Helvetica-Bold", spacing=0.9, color=GOLD)
-        _text(c, 248, top(row_top + 12), size, value, font=font)
-        _line(c, 248, top(row_top + 22), CONTENT_R, top(row_top + 22), 0.35, LINEN)
+        row_top = grid_top + k * 33
+        _text(c, row_anchor, top(row_top), 6, label, font="Helvetica-Bold",
+              spacing=0.9, color=GOLD)
+        _text(c, row_anchor, top(row_top + 14), size, value, font=font)
+        _line(c, row_anchor, top(row_top + 31), CONTENT_R, top(row_top + 31), 0.35, LINEN)
 
-    # --------------------------------------------- Section C: CV proof
-    sec_top = 340.0
+    # ---------------------------------------------- Section C: CV proof
+    sec_top = 392.0
     _line(c, CONTENT_L, top(sec_top), CONTENT_R, top(sec_top), 0.5, GOLD)
-    _text(c, PAGE_W / 2, top(sec_top - 22), 9.5, "CRYPTOGRAPHIC & COMPUTER VISION PROOF",
+    _text(c, PAGE_W / 2, top(412), 9.5, "CRYPTOGRAPHIC & COMPUTER VISION PROOF",
           font="Times-Bold", center=True, spacing=1.2, color=GOLD)
-    _line(c, CONTENT_L, top(sec_top - 26), PAGE_W / 2 - 68, top(sec_top - 26), 0.4, LINEN)
-    _line(c, PAGE_W / 2 + 68, top(sec_top - 26), CONTENT_R, top(sec_top - 26), 0.4, LINEN)
+    _line(c, CONTENT_L, top(416), PAGE_W / 2 - 68, top(416), 0.4, LINEN)
+    _line(c, PAGE_W / 2 + 68, top(416), CONTENT_R, top(416), 0.4, LINEN)
 
-    def _cv_row(offset: float, label: str, value: str, font: str = "Helvetica", size: float = 9.5,
-                value_color=MUSEUM_BLACK) -> None:
-        _text(c, CONTENT_L, top(sec_top - 50 - offset), 6, label,
+    def _cv_row(offset: int, label: str, value: str, font: str = "Helvetica",
+                size: float = 9.5, value_color=MUSEUM_BLACK) -> None:
+        _text(c, CONTENT_L, top(436 + offset), 6, label,
               font="Helvetica-Bold", spacing=0.9, color=GOLD)
-        _text(c, 226, top(sec_top - 50 - offset), size, value, font=font, color=value_color)
+        _text(c, 226, top(436 + offset), size, value, font=font, color=value_color)
 
-    _cv_row(0, "PASSPORT ID", artwork.get("heritage_id") or "—", font="Courier-Bold", size=10.5)
-    _cv_row(24, "SHA-256 DIGEST", passport.get("cryptographic_hash") or "-", font="Courier-Bold", size=8)
+    _cv_row(0, "PASSPORT ID", artwork.get("heritage_id") or "—",
+            font="Courier-Bold", size=10.5)
+    _cv_row(22, "SHA-256 DIGEST", (passport.get("cryptographic_hash") or "-")[:64],
+            font="Courier-Bold", size=8)
 
-    _text(c, CONTENT_L, top(sec_top - 98), 6, "LAPLACIAN BLUR VARIANCE",
+    _text(c, CONTENT_L, top(480), 6, "LAPLACIAN BLUR VARIANCE",
           font="Helvetica-Bold", spacing=0.9, color=GOLD)
     blur = artwork.get("blur_score")
     lap_line = "Laplacian Blur Variance  " + (f"{blur:.1f}" if blur is not None else "—") + "  ["
-    _text(c, 226, top(sec_top - 98), 8.5, lap_line, font="Helvetica")
+    _text(c, 226, top(480), 8.5, lap_line, font="Helvetica")
     x_pass = 226 + stringWidth(lap_line, "Helvetica", 8.5)
-    _text(c, x_pass, top(sec_top - 98), 8.5, "PASSED", font="Helvetica-Bold", color=EMERALD)
+    _text(c, x_pass, top(480), 8.5, "PASSED", font="Helvetica-Bold", color=EMERALD)
     x_tail = x_pass + stringWidth("PASSED", "Helvetica-Bold", 8.5)
-    _text(c, x_tail, top(sec_top - 98), 8.5, "]  (threshold >= 100.0)", font="Helvetica")
+    _text(c, x_tail, top(480), 8.5, "]  (threshold >= 100.0)", font="Helvetica")
 
     orb = artwork.get("orb_keypoint_count")
     orb_value = f"{int(orb):,} descriptors matched (pgvector)" if orb else "—"
-    _cv_row(72, "ORB KEYPOINT FEATURE COUNT", orb_value)
-    _line(c, CONTENT_L, top(sec_top - 134), CONTENT_R, top(sec_top - 134), 0.5, LINEN)
+    _cv_row(66, "ORB KEYPOINT FEATURE COUNT", orb_value)
+    _line(c, CONTENT_L, top(526), CONTENT_R, top(526), 0.5, LINEN)
 
-    # --------------------------------------------- Section D: QR + scanner
-    qr_box, qx, q_top = 96.0, 52.0, 190.0
+    # --------------------------------------- Section D: QR + scanner block
+    qr_box, qx, q_top = 96.0, 52.0, 546.0
     qy = top(q_top) - qr_box
     c.setFillColor(PARCHMENT)
     c.rect(qx, qy, qr_box, qr_box, stroke=0, fill=1)
@@ -259,51 +270,58 @@ def generate_passport_pdf(
             qw, qh = _image_scale(qr_pil, qr_box - 14, qr_box - 14)
             c.drawImage(ImageReader(qr_pil), qx + (qr_box - qw) / 2, qy + (qr_box - qh) / 2, qw, qh)
         except Exception:
-            _text(c, qx + qr_box / 2, top(q_top) - 48, 8, "SCAN TO VERIFY",
-                  font="Helvetica-Bold", center=True)
+            c.setFillColor(MUSEUM_BLACK)
+            c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(qx + qr_box / 2, qy + 44, "SCAN TO VERIFY")
 
     scan_x = 168.0
-    _text(c, scan_x, top(206), 10, "VERIFICATION SCANNER", font="Times-Bold", color=GOLD)
-    _text(c, scan_x, top(224), 8, "Scan this dynamic QR code to verify physical keypoint",
+    _text(c, scan_x, top(568), 10, "VERIFICATION SCANNER", font="Times-Bold", color=GOLD)
+    _text(c, scan_x, top(586), 8, "Scan this dynamic QR code to verify physical keypoint",
           color=GREY)
-    _text(c, scan_x, top(234), 8, "alignment against the live registry.", color=GREY)
-    _text(c, scan_x, top(250), 7.5, _safe(verify_url), font="Courier")
+    _text(c, scan_x, top(602), 8, "alignment against the live registry.", color=GREY)
+    _text(c, scan_x, top(622), 7.5, _safe(verify_url), font="Courier")
 
-    # --------------------------------------------- signatures + stamp
-    _line(c, CONTENT_L, top(304), CONTENT_R, top(304), 0.5, LINEN)
-    _line(c, 52, top(332), 148, top(332), 0.8)
-    _text(c, 52, top(346), 6, "GUILD MASTER SIGNATURE", font="Helvetica-Bold",
+    # ---------------------------------------- signatures + registry stamp
+    _line(c, CONTENT_L, top(656), CONTENT_R, top(656), 0.5, LINEN)
+    _line(c, 52, top(684), 148, top(684), 0.8)
+    _text(c, 52, top(698), 6, "GUILD MASTER SIGNATURE", font="Helvetica-Bold",
           spacing=0.8, color=GOLD)
-    _text(c, 52, top(358), 8, "Raghurajpur Crafts Guild", color=GREY)
+    _text(c, 52, top(710), 8, "Raghurajpur Crafts Guild", color=GREY)
 
-    stamp_x, stamp_y = CONTENT_R - 70, top(318)
+    stamp_x, stamp_y = CONTENT_R - 70, top(682)
     c.setStrokeColor(GOLD)
     c.setLineWidth(1.6)
     c.circle(stamp_x, stamp_y, 22, stroke=1, fill=0)
     c.setLineWidth(0.7)
     c.circle(stamp_x, stamp_y, 18.6, stroke=1, fill=0)
-    _text(c, stamp_x, top(312), 7.5, "VIRASAT", font="Times-Bold", center=True)
-    _text(c, stamp_x, top(322), 4.8, "REGISTRY", font="Helvetica-Bold", center=True,
+    _text(c, stamp_x, top(676), 7.5, "VIRASAT", font="Times-Bold", center=True)
+    _text(c, stamp_x, top(686), 4.8, "REGISTRY", font="Helvetica-Bold", center=True,
           spacing=1.4, color=GOLD)
-    _text(c, stamp_x, top(364), 6, "VIRASAT CRYPTOGRAPHIC REGISTRY STAMP",
+    _text(c, stamp_x, top(716), 6, "VIRASAT CRYPTOGRAPHIC REGISTRY STAMP",
           font="Helvetica-Bold", center=True, spacing=0.8, color=GOLD)
 
     # ------------------------------------------------------------- footer
     issued = passport.get("issued_at") or datetime.utcnow().isoformat()
-    _line(c, CONTENT_L, top(734), CONTENT_R, top(734), 0.5, GOLD)
+    issued_text = f"Issued {_fmt_date(issued)}"
+    _line(c, CONTENT_L, top(744), CONTENT_R, top(744), 0.5, GOLD)
     _text(
-        c, PAGE_W / 2, top(750), 7.5,
-        "This Heritage Passport guarantees physical micro-texture fingerprinting and lineage "
-        "provenance. Any physical copy without matching ORB keypoints is counterfeit.",
+        c, PAGE_W / 2, top(760), 7.5,
+        "This Heritage Passport guarantees physical micro-texture fingerprinting",
         font="Times-Italic", center=True, color=EMERALD,
     )
     _text(
-        c, PAGE_W / 2, top(765), 6.5,
+        c, PAGE_W / 2, top(771), 7.5,
+        "and lineage provenance. Any physical copy without matching ORB keypoints is counterfeit.",
+        font="Times-Italic", center=True, color=EMERALD,
+    )
+    _text(
+        c, PAGE_W / 2, top(786), 6.5,
         "This document constitutes a tamper-proof digital memory record.  "
         "VIRASAT - India's Digital Memory System",
         center=True, color=GREY,
     )
-    _text(c, CONTENT_R, top(766), 6, f"Issued {_fmt_date(issued)}", center=True, color=GREY)
+    _text(c, CONTENT_R - stringWidth(issued_text, "Helvetica", 6), top(789), 6,
+          issued_text, color=GREY)
 
     c.save()
     return buffer.getvalue()
