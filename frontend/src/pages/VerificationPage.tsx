@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Camera, Image, ImageUp, Search, ShieldAlert, X } from "lucide-react";
+import { Camera, ImageUp, Search, ShieldAlert, X } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { checkBlur, type BlurReport } from "../lib/blurCheck";
 import { VerificationSeal } from "../components/VerificationSeal";
@@ -20,9 +20,10 @@ export function VerificationPage() {
   const [photoBlur, setPhotoBlur] = useState<BlurReport | null>(null);
   const [imageResult, setImageResult] = useState<ImageVerificationResult | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [showImagePicker, setShowImagePicker] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [camState, setCamState] = useState<"idle" | "starting" | "live" | "error">("idle");
+  const [camError, setCamError] = useState<string | null>(null);
 
   async function runVerify(event?: FormEvent) {
     event?.preventDefault();
@@ -52,8 +53,7 @@ export function VerificationPage() {
   }, []);
 
   /* ----------------------------------------------------------- photo flow */
-  function onPickPhoto(file: File | undefined) {
-    if (!file) return;
+  function onPickPhoto(file: File) {
     if (photo) URL.revokeObjectURL(photo.url);
     const url = URL.createObjectURL(file);
     setPhoto({ blob: file, url, name: file.name });
@@ -64,20 +64,69 @@ export function VerificationPage() {
     void checkBlur(file).then(setPhotoBlur).catch(() => setPhotoBlur({ score: 0, pass: false }));
   }
 
-  function openImagePicker(source: "camera" | "gallery") {
-    setShowImagePicker(false);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    if (source === "camera") {
-      input.capture = "environment";
+  async function startCamera() {
+    if (camState === "starting" || camState === "live") return;
+    setCamState("starting");
+    setCamError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new DOMException("Unsupported", "NotSupportedError");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCamState("live");
+    } catch (err) {
+      setCamState("error");
+      const name = err instanceof DOMException ? err.name : "";
+      setCamError(
+        name === "NotAllowedError"
+          ? "Camera permission denied. Allow camera access — verification is live-camera only, no gallery uploads."
+          : name === "NotFoundError" || name === "OverconstrainedError" || name === "NotSupportedError"
+            ? "No usable camera found on this device."
+            : "Camera could not be started. Check that a camera is connected and permissions are granted.",
+      );
     }
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) onPickPhoto(file);
-    };
-    input.click();
   }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCamState("idle");
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      stopCamera();
+      onPickPhoto(new File([blob], "live-capture.jpg", { type: "image/jpeg" }));
+    }, "image/jpeg", 0.9);
+  }
+
+  useEffect(() => {
+    void startCamera();
+    return () => stopCamera();
+    // Camera lifecycle is managed by explicit buttons; no other deps here.
+  }, []);
 
   function clearPhoto() {
     if (photo) URL.revokeObjectURL(photo.url);
@@ -86,10 +135,9 @@ export function VerificationPage() {
     setImageResult(null);
   }
 
-  function onDrop(event: DragEvent) {
-    event.preventDefault();
-    setDragOver(false);
-    onPickPhoto(event.dataTransfer.files?.[0]);
+  function retakePhoto() {
+    clearPhoto();
+    void startCamera();
   }
 
   async function runImageVerify() {
@@ -126,8 +174,8 @@ export function VerificationPage() {
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-museum-parchment/60">
           Enter a registered identifier — such as{" "}
-          <span className="text-museum-gold">VR-OD-PAT-2026-000001</span> — or upload a
-          photograph of the plate. The registry recomputes the SHA-256 digest of the
+          <span className="text-museum-gold">VR-OD-PAT-2026-000001</span> — or capture the
+          plate live with your camera. The registry recomputes the SHA-256 digest of the
           stored record against the issued passport.
         </p>
       </ScrollReveal>
@@ -152,63 +200,71 @@ export function VerificationPage() {
       <div className="mx-auto mt-14 max-w-3xl">
         <div className="flex items-center gap-4">
           <span className="h-px flex-1 bg-museum-parchment/15" />
-          <span className="font-serif text-xs italic text-museum-parchment/50">or verify by photograph</span>
+          <span className="font-serif text-xs italic text-museum-parchment/50">or verify by live camera</span>
           <span className="h-px flex-1 bg-museum-parchment/15" />
         </div>
 
         <ScrollReveal delay={0.05} className="mt-6">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-sm border border-dashed px-6 py-10 text-center transition-colors ${
-              dragOver
-                ? "border-museum-gold bg-museum-gold/10"
-                : photo
-                  ? "border-museum-emerald/60"
-                  : "border-museum-gold/40 hover:border-museum-gold"
-            }`}
-          >
-            {photo ? (
-              <>
-                <img
-                  src={photo.url}
-                  alt="Selected plate photograph"
-                  className="max-h-64 rounded-sm object-contain"
-                />
-                <span className="text-[10px] uppercase tracking-[0.2em] text-museum-parchment/60">
-                  {photo.name} — tap to replace
-                </span>
-              </>
-            ) : (
-              <>
-                <Camera size={26} className="text-museum-gold" />
-                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
-                  Drop a photograph here or click to browse
-                </span>
-                <span className="text-[10px] text-museum-parchment/45">
-                  Flat capture, even light, camera steady
-                </span>
-              </>
-            )}
-            <button
-              onClick={() => setShowImagePicker(true)}
-              className="hidden"
-            />
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                onPickPhoto(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-          </div>
+          {photo ? (
+            <div className="overflow-hidden rounded-sm hairline bg-museum-black/40">
+              <img
+                src={photo.url}
+                alt="Live camera capture of the plate"
+                className="max-h-80 w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="relative overflow-hidden rounded-sm hairline bg-black/70">
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className="h-72 w-full object-cover"
+              />
+              {camState !== "live" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-museum-black/85 p-6 text-center">
+                  {camState === "error" ? (
+                    <>
+                      <Camera size={26} className="text-[#E05C4B]" />
+                      <p className="max-w-sm text-xs leading-relaxed text-museum-parchment/80">
+                        {camError}
+                      </p>
+                      <button
+                        onClick={() => void startCamera()}
+                        className="rounded-sm border border-museum-gold/60 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
+                      >
+                        Retry camera
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-museum-gold/30 border-t-museum-gold" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
+                        {camState === "starting" ? "Starting camera…" : "Camera ready"}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!photo && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
+              <button
+                onClick={capturePhoto}
+                disabled={camState !== "live"}
+                className="flex items-center gap-2.5 rounded-full border-2 border-museum-gold/80 px-7 py-3 text-xs uppercase tracking-[0.2em] text-museum-gold transition-all hover:bg-museum-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <span className="h-3 w-3 rounded-full bg-museum-gold" /> Capture
+              </button>
+              <p className="max-w-xs text-center text-[10px] leading-relaxed text-museum-parchment/45">
+                Live camera only — the plate is captured in real time, never uploaded from a
+                gallery. Flat capture, even light, camera steady.
+              </p>
+            </div>
+          )}
 
           {photoBlur && (
             <div
@@ -227,13 +283,19 @@ export function VerificationPage() {
           )}
 
           {photo && (
-            <div className="mt-4 flex justify-center gap-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => void runImageVerify()}
                 disabled={uploading}
                 className="flex items-center gap-2 rounded-sm bg-museum-gold px-6 py-3 text-xs uppercase tracking-[0.2em] text-museum-black transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 <ImageUp size={14} /> {uploading ? "Scanning registry…" : "Verify photograph"}
+              </button>
+              <button
+                onClick={retakePhoto}
+                className="flex items-center gap-2 rounded-sm border border-museum-parchment/25 px-5 py-3 text-xs uppercase tracking-[0.2em] text-museum-parchment/70 transition-colors hover:border-museum-gold hover:text-museum-gold"
+              >
+                <Camera size={13} /> Retake
               </button>
               <button
                 onClick={clearPhoto}
@@ -347,37 +409,6 @@ export function VerificationPage() {
           {imageResult.matches.map((match) => (
             <MatchCard key={match.artwork_id} match={match} />
           ))}
-        </div>
-      )}
-
-      {/* Image picker modal */}
-      {showImagePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowImagePicker(false)}>
-          <div className="bg-museum-black rounded-sm border border-museum-gold/30 p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <p className="text-center text-sm font-medium text-museum-parchment mb-4">Select image source</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => openImagePicker("camera")}
-                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
-              >
-                <Camera size={28} className="text-museum-gold" />
-                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Camera</span>
-              </button>
-              <button
-                onClick={() => openImagePicker("gallery")}
-                className="flex flex-col items-center gap-2 rounded-sm border border-museum-gold/50 p-4 text-center transition-colors hover:border-museum-gold hover:bg-museum-gold/10"
-              >
-                <Image size={28} className="text-museum-gold" />
-                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment">Gallery</span>
-              </button>
-            </div>
-            <button
-              onClick={() => setShowImagePicker(false)}
-              className="mt-4 w-full rounded-sm border border-museum-parchment/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-museum-parchment/70 hover:border-museum-gold hover:text-museum-gold transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       )}
     </main>

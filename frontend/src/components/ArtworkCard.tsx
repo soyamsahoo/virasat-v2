@@ -7,15 +7,24 @@ import { useDeepZoom } from "./DeepZoomModal";
 
 /** Museum-plate card: archived photograph (or gradient stand-in) with a
  *  deep-zoom inspector on the plate and a passport link below. */
-export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+export function ArtworkCard({
+  artwork,
+  imageUrl,
+}: {
+  artwork: Artwork;
+  /** Static plate path (bundled ``/media/artworks/``); overrides the
+   *  API-provided URL so cards render even without the backend. */
+  imageUrl?: string | null;
+}) {
   const deepZoom = useDeepZoom();
+  const src = imageUrl && imageUrl.length > 0 ? imageUrl : artwork.primary_image_url || null;
 
   return (
     <div className="group block overflow-hidden rounded-sm hairline transition-shadow duration-500 hover:shadow-glow">
       <button
         onClick={() =>
           deepZoom.open({
-            src: artwork.primary_image_url || null,
+            src,
             title: artwork.title,
             subtitle: `${artwork.heritage_id} · ${artwork.artisan_name}`,
           })
@@ -24,13 +33,13 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
         title="Open deep-zoom inspector"
       >
         <ArtworkPlate
-          src={artwork.primary_image_url || null}
+          src={src}
           title={artwork.heritage_id}
           className="h-56 w-full"
         >
           <span className="absolute left-4 top-3 flex items-center gap-1.5 rounded-full border border-museum-gold/40 bg-museum-black/60 px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] text-museum-gold">
-            {artwork.primary_image_url ? <ZoomIn size={11} /> : <ScanLine size={11} />}
-            {artwork.primary_image_url ? "Inspect plate" : "Fingerprinted"}
+            {src ? <ZoomIn size={11} /> : <ScanLine size={11} />}
+            {src ? "Inspect plate" : "Fingerprinted"}
           </span>
         </ArtworkPlate>
       </button>

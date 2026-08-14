@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Landmark, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { gsap } from "../lib/gsap";
+import { plateUrlFor } from "../lib/plates";
 import { mapLevels, palette, type MapLevel } from "../lib/tokens";
 import type { Artisan, Artwork, Region } from "../types";
 import { StatusBadge } from "./StatusBadge";
@@ -424,7 +425,7 @@ export function MapExplorer() {
                         className="group flex items-center gap-3 rounded-sm border border-museum-parchment/10 p-2.5 transition-colors hover:border-museum-gold/60"
                       >
                         <img
-                          src={artwork.primary_image_url || undefined}
+                          src={(plateUrlFor(artwork.heritage_id) ?? artwork.primary_image_url) || undefined}
                           alt={artwork.title}
                           className="h-12 w-10 shrink-0 rounded-sm object-cover"
                           loading="lazy"

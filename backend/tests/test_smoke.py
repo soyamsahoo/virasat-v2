@@ -139,6 +139,38 @@ def test_verify_by_photograph_rejects_blurry(client):
     assert rejected.status_code == 422
 
 
+def test_verify_rotated_seed_plate_via_orb_fallback(client):
+    """A real capture is never square-on: a rotated seed plate drifts past
+    the pHash/dHash Hamming pre-filter, so the structural ORB fallback must
+    still surface the plate and reach the digest outcome."""
+    import cv2
+    from pathlib import Path
+
+    plate_path = (
+        Path(__file__).resolve().parents[2]
+        / "seed_data" / "media" / "artworks" / "artwork-01.jpg"
+    )
+    img = cv2.imread(str(plate_path))
+    h, w = img.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), 3.0, 1.0)
+    rotated = cv2.warpAffine(img, matrix, (w, h), borderValue=(30, 25, 18))
+    ok, buf = cv2.imencode(".jpg", rotated, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    assert ok
+
+    verify = client.post(
+        "/api/v1/verify/image",
+        files={"file": ("capture.jpg", buf.tobytes(), "image/jpeg")},
+    )
+    assert verify.status_code == 200, verify.text
+    body = verify.json()
+    assert len(body["matches"]) > 0
+    top = body["matches"][0]
+    assert top["heritage_id"] == "VR-OD-PAT-2026-000001"
+    assert top["orb_match_score"] >= 0.6
+    assert body["result"] is not None
+    assert body["result"]["outcome"] == "verified"
+
+
 # ------------------------------------------------------------------- passports
 def test_passport_qr_and_pdf(client):
     qr = client.get("/api/v1/passports/VR-OD-PAT-2026-000001/qr")

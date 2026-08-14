@@ -2,22 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Landmark, ScrollText, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { api } from "../lib/api";
+import { plateUrlFor } from "../lib/plates";
 import { Hero } from "../components/Hero";
 import { MapExplorer } from "../components/MapExplorer";
-import { ScrollMesh } from "../components/ScrollMesh";
 import { ScrollReveal } from "../components/ScrollReveal";
 import { ArtworkCard } from "../components/ArtworkCard";
 import { PassportCard } from "../components/PassportCard";
 import { StatusBadge } from "../components/StatusBadge";
 import type { Artisan, Artwork, Tradition } from "../types";
-import plateUrl from "../assets/patachitra/jagannath-subhadra-balabhadra.jpg";
-import patachitra1 from "/media/artworks/dasavtar.jpg";
-import patachitra2 from "/media/artworks/jagannath subhadra balabhadra.jpg";
-import patachitra3 from "/media/artworks/kanchi vijaya pattachitra.jpg";
-import patachitra4 from "/media/artworks/Odisha_Pattachitara_Depicting_Unconditional_Love_between_Radha_Krushna.jpg";
-import patachitra5 from "/media/artworks/Pattachitra-Art-An-Expression-Of-Mythology-And-Folklore.jpg";
-import patachitra6 from "/media/artworks/1_JBfvOVgosFoehRl32eJDiw.jpg";
-import patachitra7 from "/media/artworks/Extrait_de_Chandi_Mangal_de_Hazra_Chitrakar_(Naya_Bengale)_(1439702942).jpg";
 
 interface ArtworkFilters {
   state: string;
@@ -35,6 +27,156 @@ const EMPTY_FILTERS: ArtworkFilters = {
   century: "",
 };
 
+/** Static archive fallback: mirrors the seeded registry so the fingerprinted
+ *  works (and their plates) stay viewable even when the API is unreachable.
+ *  Plates resolve via ``plateUrlFor`` to the bundled public media. */
+const MOCK_ARTWORKS: Artwork[] = [
+  {
+    id: "mock-artwork-01",
+    heritage_id: "VR-OD-PAT-2026-000001",
+    title: "Dashavatara Patta",
+    dimensions: "24 x 18 in",
+    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments, lacquer seal",
+    creation_year: 2026,
+    artisan_id: "mock-artisan-01",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 3505.7,
+    primary_image_url: "/media/artworks/artwork-01.jpg",
+    created_at: "",
+    artisan_name: "Gopinath Moharana",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "master_verified",
+  },
+  {
+    id: "mock-artwork-02",
+    heritage_id: "VR-OD-PAT-2026-000002",
+    title: "Krishna Leela Kriya",
+    dimensions: "12 x 9 in",
+    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments",
+    creation_year: 2024,
+    artisan_id: "mock-artisan-01",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 15783.9,
+    primary_image_url: "/media/artworks/artwork-02.jpg",
+    created_at: "",
+    artisan_name: "Gopinath Moharana",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "master_verified",
+  },
+  {
+    id: "mock-artwork-03",
+    heritage_id: "VR-OD-PAT-2026-000003",
+    title: "Nabagunjara — Cosmic Form of Krishna",
+    dimensions: "30 x 22 in",
+    medium: "Cotton Patta with chalk & conch-shell ground, mineral pigments",
+    creation_year: 2025,
+    artisan_id: "mock-artisan-02",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 5678.7,
+    primary_image_url: "/media/artworks/artwork-03.jpg",
+    created_at: "",
+    artisan_name: "Shyamsundar Moharana",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "field_verified",
+  },
+  {
+    id: "mock-artwork-04",
+    heritage_id: "VR-OD-PAT-2026-000004",
+    title: "Radha-Krishna in the Grove",
+    dimensions: "18 x 14 in",
+    medium: "Cotton Patta with Tamarind seed adhesive, mineral pigments",
+    creation_year: 2026,
+    artisan_id: "mock-artisan-03",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 49094.8,
+    primary_image_url: "/media/artworks/artwork-04.jpg",
+    created_at: "",
+    artisan_name: "Aditya Moharana",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "field_verified",
+  },
+  {
+    id: "mock-artwork-05",
+    heritage_id: "VR-OD-PAT-2026-000005",
+    title: "Matsya Avatar on Patta",
+    dimensions: "15 x 11 in",
+    medium: "Cotton Patta with mineral pigments",
+    creation_year: 2023,
+    artisan_id: "mock-artisan-03",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 15364.2,
+    primary_image_url: "/media/artworks/artwork-05.jpg",
+    created_at: "",
+    artisan_name: "Aditya Moharana",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "pending",
+  },
+  {
+    id: "mock-artwork-06",
+    heritage_id: "VR-OD-PAT-2026-000006",
+    title: "Vamana Avatar — Three Strides",
+    dimensions: "20 x 16 in",
+    medium: "Cotton Patta with chalk ground, mineral pigments",
+    creation_year: 2025,
+    artisan_id: "mock-artisan-04",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 15502.9,
+    primary_image_url: "/media/artworks/artwork-06.jpg",
+    created_at: "",
+    artisan_name: "Kanchana Sahoo",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "field_verified",
+  },
+  {
+    id: "mock-artwork-07",
+    heritage_id: "VR-OD-PAT-2026-000007",
+    title: "Kalika Pattachitra",
+    dimensions: "16 x 12 in",
+    medium: "Cotton Patta with mineral pigments",
+    creation_year: 2024,
+    artisan_id: "mock-artisan-05",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 950.4,
+    primary_image_url: "/media/artworks/artwork-07.jpg",
+    created_at: "",
+    artisan_name: "Sunita Sahoo",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "pending",
+  },
+  {
+    id: "mock-artwork-08",
+    heritage_id: "VR-OD-PAT-2026-000008",
+    title: "Jagannath Trinity on Patta",
+    dimensions: "24 x 18 in",
+    medium: "Cotton Patta with chalk & conch-shell ground, mineral pigments",
+    creation_year: 2026,
+    artisan_id: "mock-artisan-06",
+    phash_signature: null,
+    dhash_signature: null,
+    blur_score: 16923.7,
+    primary_image_url: "/media/artworks/artwork-08.jpg",
+    created_at: "",
+    artisan_name: "Devraj Sahoo",
+    tradition_title: "Odisha Pattachitra",
+    origin_state: "Odisha",
+    verification_status: "master_verified",
+  },
+];
+
 export function HomePage() {
   const [traditions, setTraditions] = useState<Tradition[]>([]);
   const [artisans, setArtisans] = useState<Artisan[]>([]);
@@ -49,12 +191,15 @@ export function HomePage() {
     void api.artworks.list()
       .then((rows) => {
         setAllArtworks(rows);
-        setArtworks(rows.slice(0, 6));
+        setArtworks(rows);
       })
-      .catch(() => setArtworks([]));
+      .catch(() => {
+        setAllArtworks(MOCK_ARTWORKS);
+        setArtworks(MOCK_ARTWORKS);
+      });
     void api.artworks.get("VR-OD-PAT-2026-000001")
       .then(setSpotlightArtwork)
-      .catch(() => setSpotlightArtwork(null));
+      .catch(() => setSpotlightArtwork(MOCK_ARTWORKS[0]));
   }, []);
 
   useEffect(() => {
@@ -109,12 +254,30 @@ export function HomePage() {
 
       <MapExplorer />
 
-      {/* ------------------------------------------- living cloth unroll */}
-      <ScrollMesh
-        src={plateUrl}
-        title="Jagannath, Subhadra & Balabhadra"
-        subtitle="Pattachitra from Raghurajpur, Odisha — the trinity of Puri rendered in mineral pigment. The cloth unrolls with the weight of its own history."
-      />
+      {/* ------------------------------------------- the showpiece */}
+      <section className="mx-auto max-w-5xl px-6 py-20">
+        <ScrollReveal>
+          <figure className="overflow-hidden rounded-sm hairline">
+            <img
+              src={plateUrlFor("VR-OD-PAT-2026-000008") ?? undefined}
+              alt="Jagannath, Subhadra & Balabhadra — Pattachitra from Raghurajpur"
+              className="h-[70vh] w-full bg-museum-black/40 object-cover"
+              loading="eager"
+            />
+            <figcaption className="border-t border-museum-gold/15 bg-museum-black/40 p-8 text-center md:p-10">
+              <p className="eyebrow text-museum-gold">The Showpiece</p>
+              <h2 className="mt-3 font-display text-2xl text-museum-parchment md:text-4xl">
+                Jagannath, Subhadra & Balabhadra
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-museum-parchment/60">
+                The Puri trinity rendered in the traditional chitrakar style — mineral
+                pigment on cotton patta, the cloth holding the weight of darshan. It
+                emerges as you scroll, as if drawn from the archive itself.
+              </p>
+            </figcaption>
+          </figure>
+        </ScrollReveal>
+      </section>
 
       {/* ------------------------------------------------------- traditions */}
       <section className="mx-auto max-w-7xl px-6 py-24">
@@ -290,7 +453,10 @@ export function HomePage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {artworks.map((artwork, index) => (
               <ScrollReveal key={artwork.id} delay={(index % 3) * 0.08}>
-                <ArtworkCard artwork={artwork} />
+                <ArtworkCard
+                  artwork={artwork}
+                  imageUrl={plateUrlFor(artwork.heritage_id)}
+                />
               </ScrollReveal>
             ))}
           </div>
@@ -320,94 +486,6 @@ export function HomePage() {
             />
           </ScrollReveal>
         )}
-      </section>
-
-      {/* ------------------------------------------- living cloth gallery */}
-      <section className="border-y border-museum-gold/15 bg-museum-black/30">
-        <div className="mx-auto max-w-7xl px-6 py-24">
-          <ScrollReveal className="mb-16 text-center">
-            <p className="eyebrow text-museum-gold">The Living Cloth</p>
-            <h2 className="mt-3 font-display text-3xl text-museum-parchment md:text-5xl">
-              Scrolls That Remember Every Hand
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm text-museum-parchment/60">
-              Each Pattachitra scroll is a living document — unrolled for darshan,
-              rolled for safekeeping. Scroll through the gallery to unfurl them.
-            </p>
-          </ScrollReveal>
-
-          <div className="space-y-32">
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra1}
-                title="Dashavatara Patta"
-                subtitle="The ten avatars of Vishnu in mineral pigment on cotton — Gopinath Moharana's masterwork from Raghurajpur."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra2}
-                title="Jagannath, Subhadra & Balabhadra"
-                subtitle="The Puri trinity rendered in the traditional chitrakar style — the cloth holds the weight of darshan."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra3}
-                title="Kanchi Vijaya Patta"
-                subtitle="The victory procession of Jagannath — a narrative scroll depicting the Kanchi expedition in vivid mineral colours."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra4}
-                title="Radha-Krishna: Unconditional Love"
-                subtitle="Divine love in the grove — delicate brushwork and natural pigments capturing the eternal rasa."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra5}
-                title="Pattachitra: Expression of Mythology"
-                subtitle="A compendium scroll — multiple narratives woven into a single continuous cloth of devotion."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra6}
-                title="Traditional Pattachitra Composition"
-                subtitle="Border patterns and narrative registers — the grammar of Odisha's scroll tradition in one frame."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-
-            <ScrollReveal>
-              <ScrollMesh
-                src={patachitra7}
-                title="Chandi Mangal — Hazra Chitrakar"
-                subtitle="From the Naya village tradition — Bengal's scroll painting heritage, the Goddess in her fierce grace."
-                planeWidth={6.5}
-                scrollHeight={250}
-              />
-            </ScrollReveal>
-          </div>
-        </div>
       </section>
 
       {/* ------------------------------------------------------------- CTA */}

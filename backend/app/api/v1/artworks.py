@@ -166,6 +166,12 @@ async def _detect_duplicates(
     candidates = await repo.find_similar_by_hash(
         phash, dhash, settings.hash_hamming_threshold
     )
+    if not candidates:
+        # A real capture rarely matches the archive plate pixel-for-pixel:
+        # rotation/angle/lighting push the perceptual hashes past the
+        # Hamming pre-filter. Fall back to a structural ORB scan so the
+        # plate is still recognised — ORB + RANSAC decides, not the gates.
+        candidates = await repo.list_hash_candidates(phash, dhash)
     results: list[SimilarArtwork] = []
     for candidate in candidates:
         if candidate["artwork_id"] == exclude_artwork_id:

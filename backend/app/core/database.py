@@ -530,6 +530,30 @@ class MemoryRepository:
                 )
         return results
 
+    async def list_hash_candidates(
+        self, phash: str, dhash: str
+    ) -> list[dict]:
+        """Every fingerprinted artwork with hash distances — no Hamming gate.
+
+        Structural-scan fallback for camera captures whose perceptual
+        hashes drift beyond the pre-filter (rotation, angle, lighting);
+        ORB then decides who really matches.
+        """
+        results = []
+        for row in self.artworks.values():
+            if not row.get("phash_signature") or not row.get("dhash_signature"):
+                continue
+            results.append(
+                {
+                    "artwork_id": row["id"],
+                    "heritage_id": row["heritage_id"],
+                    "title": row["title"],
+                    "phash_distance": _hamming(phash, row["phash_signature"]),
+                    "dhash_distance": _hamming(dhash, row["dhash_signature"]),
+                }
+            )
+        return results
+
     # -------------------------------------------------------------- stories
     async def create_story(self, data: dict) -> dict:
         row = {"id": _uid(), "created_at": _now(), **data}
@@ -1025,6 +1049,29 @@ class PostgresRepository:
                     }
                 )
         return results
+
+    async def list_hash_candidates(
+        self, phash: str, dhash: str
+    ) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id AS artwork_id, heritage_id, title,
+                       phash_signature, dhash_signature
+                FROM artworks
+                WHERE phash_signature IS NOT NULL AND dhash_signature IS NOT NULL
+                """
+            )
+        return [
+            {
+                "artwork_id": str(row["artwork_id"]),
+                "heritage_id": row["heritage_id"],
+                "title": row["title"],
+                "phash_distance": _hamming(phash, row["phash_signature"]),
+                "dhash_distance": _hamming(dhash, row["dhash_signature"]),
+            }
+            for row in rows
+        ]
 
     # -------------------------------------------------------------- stories
     async def create_story(self, data: dict) -> dict:
