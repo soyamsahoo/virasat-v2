@@ -33,6 +33,22 @@ export function mockDigest(heritageId: string): string {
   return words.join("");
 }
 
+/** Deterministic ORB keypoint count (768-2304) for the offline certificate's
+ *  computer-vision proof block. The live registry reports the real count. */
+export function mockOrbFeatures(heritageId: string): number {
+  return 768 + (fnv1a(`orb::${heritageId}`, 3) % 1537);
+}
+
+/** GI tag label for a tradition; matches the seeded registry entry. */
+export function mockGiTag(traditionTitle: string | null): string | null {
+  switch (traditionTitle) {
+    case "Odisha Pattachitra":
+      return "GI-88";
+    default:
+      return null;
+  }
+}
+
 /** Offline fallback passport: mirrors the shape the API returns so the
  *  passport UI (and every fingerprinted plate) renders without the backend.
  *  ``pdf_passport_url`` is left empty — the printable certificate needs the

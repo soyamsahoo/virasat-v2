@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, KeyRound, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
-import { mockPassportFor } from "../lib/passports";
+import { mockGiTag, mockOrbFeatures, mockPassportFor } from "../lib/passports";
 import { mockArtisanById, mockArtworkByHeritageId } from "../lib/mockRegistry";
 import { buildRegistryCertificatePdf, saveBlob } from "../lib/passportPdf";
 import { PassportCard } from "../components/PassportCard";
@@ -121,6 +121,9 @@ export function PassportPage() {
         dimensions: art.dimensions,
         cryptographicHash: pass?.cryptographic_hash ?? mockPassportFor(target).cryptographic_hash,
         issuedAt: pass?.issued_at ?? mockPassportFor(target).issued_at,
+        giTag: mockGiTag(art.tradition_title),
+        laplacianVariance: art.blur_score ?? null,
+        orbFeatures: mockOrbFeatures(target),
       });
       saveBlob(new Blob([bytes], { type: "application/pdf" }), `virasat-passport-${target}.pdf`);
     } else {
