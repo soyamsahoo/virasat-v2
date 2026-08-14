@@ -194,3 +194,9 @@ export interface VerificationResult {
   events: ProvenanceEvent[];
   checked_at: string;
 }
+
+export interface ImageVerificationResult {
+  image_quality: ImageQualityReport;
+  matches: SimilarArtwork[];
+  result: VerificationResult | null;
+}

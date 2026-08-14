@@ -4,6 +4,7 @@ import type {
   Artwork,
   FieldAgent,
   HeritagePassport,
+  ImageVerificationResult,
   InstitutionalInquiry,
   InquiryStatus,
   InquiryType,
@@ -126,6 +127,10 @@ export const api = {
   },
   verify: {
     check: (heritageId: string) => request<VerificationResult>(`/verify/${heritageId}`),
+    byImage: (form: FormData) => request<ImageVerificationResult>("/verify/image", {
+      method: "POST",
+      body: form,
+    }),
   },
   agents: {
     get: (id: string) => request<FieldAgent>(`/field-agents/${id}`),

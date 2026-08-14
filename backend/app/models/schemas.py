@@ -294,6 +294,14 @@ class VerificationResult(Model):
     checked_at: datetime
 
 
+class ImageVerificationResult(Model):
+    """Photo-based verification: CV fingerprint matches + official
+    digest outcome for the best-matching registered plate."""
+    image_quality: ImageQualityReport
+    matches: list[SimilarArtwork] = []
+    result: Optional[VerificationResult] = None
+
+
 # --------------------------------------------------------------------------
 # Institutional patronage hub (zero-commerce model)
 # --------------------------------------------------------------------------

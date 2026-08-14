@@ -1,11 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Search, ShieldAlert, FileDown } from "lucide-react";
+import { Camera, FileDown, ImageUp, Search, ShieldAlert, X } from "lucide-react";
 import { api, ApiError } from "../lib/api";
+import { checkBlur, type BlurReport } from "../lib/blurCheck";
 import { VerificationSeal } from "../components/VerificationSeal";
 import { StatusBadge } from "../components/StatusBadge";
 import { ScrollReveal } from "../components/ScrollReveal";
-import type { VerificationResult } from "../types";
+import { KeypointMatchInspector } from "../components/KeypointMatchInspector";
+import type { ImageVerificationResult, SimilarArtwork, VerificationResult } from "../types";
 
 export function VerificationPage() {
   const [query, setQuery] = useState("");
@@ -13,10 +15,19 @@ export function VerificationPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [photo, setPhoto] = useState<{ blob: Blob; url: string; name: string } | null>(null);
+  const [photoBlur, setPhotoBlur] = useState<BlurReport | null>(null);
+  const [imageResult, setImageResult] = useState<ImageVerificationResult | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   async function runVerify(event?: FormEvent) {
     event?.preventDefault();
     const heritageId = query.trim();
     if (!heritageId || loading) return;
+    clearPhoto();
+    setImageResult(null);
     setLoading(true);
     setError(null);
     try {
@@ -38,6 +49,53 @@ export function VerificationPage() {
     }
   }, []);
 
+  /* ----------------------------------------------------------- photo flow */
+  function onPickPhoto(file: File | undefined) {
+    if (!file) return;
+    if (photo) URL.revokeObjectURL(photo.url);
+    const url = URL.createObjectURL(file);
+    setPhoto({ blob: file, url, name: file.name });
+    setPhotoBlur(null);
+    setImageResult(null);
+    setResult(null);
+    setError(null);
+    void checkBlur(file).then(setPhotoBlur).catch(() => setPhotoBlur({ score: 0, pass: false }));
+  }
+
+  function clearPhoto() {
+    if (photo) URL.revokeObjectURL(photo.url);
+    setPhoto(null);
+    setPhotoBlur(null);
+    setImageResult(null);
+  }
+
+  function onDrop(event: DragEvent) {
+    event.preventDefault();
+    setDragOver(false);
+    onPickPhoto(event.dataTransfer.files?.[0]);
+  }
+
+  async function runImageVerify() {
+    if (!photo || uploading) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", photo.blob, photo.name || "plate-photo.jpg");
+      const response = await api.verify.byImage(form);
+      setImageResult(response);
+      setResult(response.result);
+    } catch (err) {
+      setImageResult(null);
+      setResult(null);
+      setError(err instanceof ApiError ? err.message : "Verification service unavailable.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const bestMatch = imageResult?.matches.find((m) => m.keypoint_pairs.length > 0) ?? null;
+
   return (
     <main className="mx-auto max-w-5xl px-6 pb-28 pt-36">
       <ScrollReveal className="text-center">
@@ -47,9 +105,9 @@ export function VerificationPage() {
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-museum-parchment/60">
           Enter a registered identifier — such as{" "}
-          <span className="text-museum-gold">VR-OD-PAT-2026-000001</span> — and the
-          registry recomputes the SHA-256 digest of the stored record against
-          the issued passport.
+          <span className="text-museum-gold">VR-OD-PAT-2026-000001</span> — or upload a
+          photograph of the plate. The registry recomputes the SHA-256 digest of the
+          stored record against the issued passport.
         </p>
       </ScrollReveal>
 
@@ -69,10 +127,128 @@ export function VerificationPage() {
         </button>
       </form>
 
+      {/* -------------------------------------------------- photo section */}
+      <div className="mx-auto mt-14 max-w-3xl">
+        <div className="flex items-center gap-4">
+          <span className="h-px flex-1 bg-museum-parchment/15" />
+          <span className="font-serif text-xs italic text-museum-parchment/50">or verify by photograph</span>
+          <span className="h-px flex-1 bg-museum-parchment/15" />
+        </div>
+
+        <ScrollReveal delay={0.05} className="mt-6">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-sm border border-dashed px-6 py-10 text-center transition-colors ${
+              dragOver
+                ? "border-museum-gold bg-museum-gold/10"
+                : photo
+                  ? "border-museum-emerald/60"
+                  : "border-museum-gold/40 hover:border-museum-gold"
+            }`}
+          >
+            {photo ? (
+              <>
+                <img
+                  src={photo.url}
+                  alt="Selected plate photograph"
+                  className="max-h-64 rounded-sm object-contain"
+                />
+                <span className="text-[10px] uppercase tracking-[0.2em] text-museum-parchment/60">
+                  {photo.name} — tap to replace
+                </span>
+              </>
+            ) : (
+              <>
+                <Camera size={26} className="text-museum-gold" />
+                <span className="text-xs uppercase tracking-[0.2em] text-museum-parchment/70">
+                  Drop a photograph here or click to browse
+                </span>
+                <span className="text-[10px] text-museum-parchment/45">
+                  Flat capture, even light, camera steady
+                </span>
+              </>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                onPickPhoto(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+
+          {photoBlur && (
+            <div
+              className={`mt-3 rounded-sm border p-3 text-xs ${
+                photoBlur.pass
+                  ? "border-museum-emerald/60 text-[#7FBF94]"
+                  : "border-[#C0392B]/60 text-[#E05C4B]"
+              }`}
+            >
+              Local quality pre-check: Laplacian variance{" "}
+              <b className="font-display">{photoBlur.score.toFixed(1)}</b> —{" "}
+              {photoBlur.pass
+                ? "passes the sharpness gate"
+                : "blurry; re-capture with a steady camera"}
+            </div>
+          )}
+
+          {photo && (
+            <div className="mt-4 flex justify-center gap-3">
+              <button
+                onClick={() => void runImageVerify()}
+                disabled={uploading}
+                className="flex items-center gap-2 rounded-sm bg-museum-gold px-6 py-3 text-xs uppercase tracking-[0.2em] text-museum-black transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                <ImageUp size={14} /> {uploading ? "Scanning registry…" : "Verify photograph"}
+              </button>
+              <button
+                onClick={clearPhoto}
+                className="flex items-center gap-2 rounded-sm border border-museum-parchment/25 px-5 py-3 text-xs uppercase tracking-[0.2em] text-museum-parchment/70 transition-colors hover:border-museum-gold hover:text-museum-gold"
+              >
+                <X size={13} /> Remove
+              </button>
+            </div>
+          )}
+        </ScrollReveal>
+      </div>
+
       {error && (
         <div className="mx-auto mt-8 flex max-w-2xl items-center gap-3 rounded-sm border border-[#C0392B]/60 bg-[#2A1010]/60 p-5 text-sm text-museum-parchment/80">
           <ShieldAlert size={18} className="shrink-0 text-[#E05C4B]" />
-          <span>{error} — the identifier may not be registered.</span>
+          <span>
+            {error}
+            {!photo && " — the identifier may not be registered."}
+          </span>
+        </div>
+      )}
+
+      {imageResult && imageResult.matches.length === 0 && (
+        <div className="mx-auto mt-10 max-w-2xl rounded-sm hairline p-7 text-center">
+          <p className="font-display text-xl text-museum-parchment">No registered match found</p>
+          <p className="mt-2 text-xs leading-relaxed text-museum-parchment/55">
+            The registry holds no plate with a fingerprint close to this photograph
+            (blur score {imageResult.image_quality.blur_score.toFixed(1)}). It may not be
+            registered — or the capture differs too much from the archived plate.
+          </p>
+        </div>
+      )}
+
+      {bestMatch && photo && (
+        <div className="mx-auto mt-10 max-w-4xl">
+          <KeypointMatchInspector
+            leftImage={photo.url}
+            leftLabel="Your photograph"
+            match={bestMatch}
+          />
         </div>
       )}
 
@@ -147,6 +323,53 @@ export function VerificationPage() {
           </ScrollReveal>
         </div>
       )}
+
+      {imageResult && imageResult.matches.length > 0 && (
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {imageResult.matches.map((match) => (
+            <MatchCard key={match.artwork_id} match={match} />
+          ))}
+        </div>
+      )}
     </main>
+  );
+}
+
+function MatchCard({ match }: { match: SimilarArtwork }) {
+  return (
+    <div className="rounded-sm hairline p-4">
+      <div className="flex items-start gap-3">
+        {match.artwork_image_url ? (
+          <img
+            src={match.artwork_image_url}
+            alt={match.title}
+            className="h-20 w-20 shrink-0 rounded-sm object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-sm border border-museum-parchment/10 font-serif text-xs italic text-museum-parchment/40">
+            No plate
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm text-museum-parchment/90">{match.title}</p>
+          <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.18em] text-museum-gold">
+            {match.heritage_id}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-museum-parchment/60">{match.artisan_name}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[9px] uppercase tracking-[0.18em] text-museum-parchment/55">
+        <span>
+          Similarity <b className="text-museum-gold">{Math.round(match.orb_match_score * 100)}%</b>
+        </span>
+        {match.orb_verified && <span className="text-[#7FBF94]">ORB verified</span>}
+        <span>
+          pHash <b className="text-museum-gold">{match.phash_distance}</b>
+        </span>
+        <Link to={`/verify?id=${encodeURIComponent(match.heritage_id)}`} className="text-museum-gold hover:underline">
+          Check ID →
+        </Link>
+      </div>
+    </div>
   );
 }

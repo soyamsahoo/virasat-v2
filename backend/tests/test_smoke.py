@@ -101,6 +101,44 @@ def test_unknown_id_not_registered(client):
     assert vr["outcome"] == "not_registered"
 
 
+# ------------------------------------------------------------- photo verify
+def test_verify_by_photograph_matches_registry(client):
+    gopinath = next(
+        a for a in client.get("/api/v1/artisans").json()
+        if a["full_name"] == "Gopinath Moharana"
+    )
+    upload = upload_artwork(
+        client, make_sharp_image(), gopinath["id"], auto_passport="true"
+    )
+    assert upload.status_code == 201
+    new_id = upload.json()["heritage_id"]
+
+    verify = client.post(
+        "/api/v1/verify/image",
+        files={"file": ("photo.jpg", make_sharp_image(), "image/jpeg")},
+    )
+    assert verify.status_code == 200, verify.text
+    body = verify.json()
+
+    assert body["image_quality"]["blur_pass"] is True
+    assert isinstance(body["matches"], list) and len(body["matches"]) > 0
+    matched_ids = {m["heritage_id"] for m in body["matches"]}
+    assert new_id in matched_ids
+    assert all(m["orb_match_score"] >= 0.0 for m in body["matches"])
+
+    if body["result"] is not None:
+        assert body["result"]["outcome"] == "verified"
+        assert body["result"]["computed_sha256"] == body["result"]["stored_sha256"]
+
+
+def test_verify_by_photograph_rejects_blurry(client):
+    rejected = client.post(
+        "/api/v1/verify/image",
+        files={"file": ("blurry.jpg", make_flat_image(), "image/jpeg")},
+    )
+    assert rejected.status_code == 422
+
+
 # ------------------------------------------------------------------- passports
 def test_passport_qr_and_pdf(client):
     qr = client.get("/api/v1/passports/VR-OD-PAT-2026-000001/qr")
