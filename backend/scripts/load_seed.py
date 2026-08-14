@@ -18,6 +18,7 @@ from pathlib import Path
 import asyncpg
 
 from app.core.config import get_settings
+from app.core.security import pin_digest
 
 
 def norm(value: str) -> str:
@@ -124,17 +125,21 @@ async def run() -> None:
 
         agent_rows = read_json(seed / "agents.json")
         agent_ids: dict[str, str] = {}
+        seed_pin = get_settings().seed_agent_pin
         for row in agent_rows:
             agent_id = str(uuid.uuid4())
             agent_ids[norm(row["full_name"])] = agent_id
+            salt = str(uuid.uuid4())
             await conn.execute(
                 """
                 INSERT INTO field_agents (id, full_name, ngo_organization,
-                                          assigned_region_id, badge_number)
-                VALUES ($1, $2, $3, $4, $5)
+                                          assigned_region_id, badge_number,
+                                          access_pin_hash, pin_salt)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """,
                 agent_id, row["full_name"], row["ngo_organization"],
                 uuid.UUID(region_ids[norm(row["region_ref"])]), row["badge_number"],
+                pin_digest(seed_pin, salt), salt,
             )
 
         for row in read_json(seed / "stories.json"):

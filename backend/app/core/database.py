@@ -11,13 +11,14 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 import asyncpg
 
 from app.core.config import get_settings
+from app.core.security import pin_digest, random_pin, verify_pin
 from app.cv_engine.fingerprint import VisualFingerprintEngine
 
 SEED_FILES = (
@@ -29,6 +30,9 @@ SEED_FILES = (
     "stories.json",
     "events.json",
 )
+
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_SECONDS = 900
 
 
 def _now() -> str:
@@ -65,6 +69,7 @@ class MemoryRepository:
         self.stories: list[dict] = []
         self.inquiries: list[dict] = []
         self._artwork_images: dict[str, bytes] = {}
+        self._login_guard: dict[str, dict] = {}
         self._load_seed()
 
     # ------------------------------------------------------------------ seed
@@ -90,6 +95,14 @@ class MemoryRepository:
         for row in agents or []:
             row.setdefault("id", _uid())
             row.setdefault("created_at", _now())
+            # Seed agents share the demo PIN (documented in settings) so the
+            # pilot has working credentials; the digest is the only credential
+            # persisted, exactly as for agents registered via the API.
+            row.setdefault("pin_salt", _uid())
+            row.setdefault(
+                "access_pin_hash",
+                pin_digest(get_settings().seed_agent_pin, row["pin_salt"]),
+            )
             self.agents[row["id"]] = row
 
         region_ids = {self._norm(row["village"]): row["id"] for row in self.regions.values()}
@@ -391,13 +404,22 @@ class MemoryRepository:
         return row
 
     # --------------------------------------------------------------- agents
-    async def create_agent(self, data: dict) -> dict:
+    async def create_agent(self, data: dict) -> tuple[dict, str]:
         for existing in self.agents.values():
             if existing["badge_number"] == data["badge_number"]:
                 raise ValueError(f"Badge number {data['badge_number']} already registered.")
-        row = {"id": _uid(), "created_at": _now(), **data}
+        # Issue a credential, persist only its salted digest.
+        pin = random_pin()
+        salt = _uid()
+        row = {
+            "id": _uid(),
+            "created_at": _now(),
+            "access_pin_hash": pin_digest(pin, salt),
+            "pin_salt": salt,
+            **data,
+        }
         self.agents[row["id"]] = row
-        return row
+        return row, pin
 
     async def get_agent(self, agent_id: str) -> dict | None:
         return self.agents.get(agent_id)
@@ -408,6 +430,36 @@ class MemoryRepository:
             if str(row.get("badge_number", "")).strip().lower() == badge:
                 return dict(row)
         return None
+
+    async def authenticate_agent(self, badge_number: str, access_pin: str) -> dict | None:
+        """Verified sign-in: badge + PIN with brute-force lockout.
+
+        Five failed attempts lock the badge for 15 minutes. Success resets
+        the counter. A locked account raises ``ValueError`` so the route can
+        map it to a 401 without revealing which part of the credential
+        failed.
+        """
+        key = badge_number.strip().lower()
+        now = datetime.now(timezone.utc)
+        guard = self._login_guard.get(key)
+        if guard:
+            if guard["locked_until"] and now <= guard["locked_until"]:
+                raise ValueError("Too many attempts. Try again in a few minutes.")
+            if guard["locked_until"] and now > guard["locked_until"]:
+                guard["fails"] = 0
+                guard["locked_until"] = None
+        row = await self.get_agent_by_badge(key)
+        if row is None:
+            return None
+        if not verify_pin(access_pin, row["pin_salt"], row["access_pin_hash"]):
+            guard = guard or {"fails": 0, "locked_until": None}
+            guard["fails"] += 1
+            if guard["fails"] >= MAX_LOGIN_ATTEMPTS:
+                guard["locked_until"] = now + timedelta(seconds=LOCKOUT_SECONDS)
+            self._login_guard[key] = guard
+            return None
+        self._login_guard.pop(key, None)
+        return dict(row)
 
     # ------------------------------------------------------------- artisans
     async def list_artisans(
@@ -665,6 +717,7 @@ class PostgresRepository:
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
         self.pool: asyncpg.Pool | None = None
+        self._login_guard: dict[str, dict] = {}
 
     async def connect(self) -> None:
         if self.pool is None:
@@ -775,19 +828,23 @@ class PostgresRepository:
             return self._r(record)
 
     # --------------------------------------------------------------- agents
-    async def create_agent(self, data: dict) -> dict:
+    async def create_agent(self, data: dict) -> tuple[dict, str]:
+        pin = random_pin()
+        salt = _uid()
         async with self.pool.acquire() as conn:
             try:
                 record = await conn.fetchrow(
                     """
                     INSERT INTO field_agents (full_name, ngo_organization,
-                                              assigned_region_id, badge_number)
-                    VALUES ($1, $2, $3, $4) RETURNING *
+                                              assigned_region_id, badge_number,
+                                              access_pin_hash, pin_salt, contact_email)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
                     """,
                     data["full_name"], data["ngo_organization"],
                     uuid.UUID(data["assigned_region_id"]), data["badge_number"],
+                    pin_digest(pin, salt), salt, data.get("contact_email"),
                 )
-                return self._r(record)
+                return self._r(record), pin
             except asyncpg.UniqueViolationError:
                 raise ValueError(
                     f"Badge number {data['badge_number']} already registered."
@@ -807,6 +864,31 @@ class PostgresRepository:
                 badge_number.strip(),
             )
             return self._r(record) if record else None
+
+    async def authenticate_agent(self, badge_number: str, access_pin: str) -> dict | None:
+        """Verified sign-in: badge + PIN with brute-force lockout (see the
+        memory repository for the policy contract)."""
+        key = badge_number.strip().lower()
+        now = datetime.now(timezone.utc)
+        guard = self._login_guard.get(key)
+        if guard:
+            if guard["locked_until"] and now <= guard["locked_until"]:
+                raise ValueError("Too many attempts. Try again in a few minutes.")
+            if guard["locked_until"] and now > guard["locked_until"]:
+                guard["fails"] = 0
+                guard["locked_until"] = None
+        row = await self.get_agent_by_badge(key)
+        if row is None:
+            return None
+        if not verify_pin(access_pin, row["pin_salt"], row["access_pin_hash"]):
+            guard = guard or {"fails": 0, "locked_until": None}
+            guard["fails"] += 1
+            if guard["fails"] >= MAX_LOGIN_ATTEMPTS:
+                guard["locked_until"] = now + timedelta(seconds=LOCKOUT_SECONDS)
+            self._login_guard[key] = guard
+            return None
+        self._login_guard.pop(key, None)
+        return dict(row)
 
     # ------------------------------------------------------------- artisans
     _ARTISAN_SELECT = """

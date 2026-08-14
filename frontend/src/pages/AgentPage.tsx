@@ -686,25 +686,37 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: FieldAgent) => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [badge, setBadge] = useState("");
+  const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ full_name: "", ngo_organization: "", badge_number: "", assigned_region_id: "" });
+  const [issued, setIssued] = useState<{ agent: FieldAgent; access_pin: string } | null>(null);
+  const [form, setForm] = useState({
+    full_name: "",
+    ngo_organization: "",
+    assigned_region_id: "",
+    badge_number: "",
+    ngo_access_code: "",
+    contact_email: "",
+  });
+
+  async function persistAndEnter(agent: FieldAgent) {
+    try {
+      localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
+    } catch {
+      /* private-mode storage unavailable — keep session */
+    }
+    onEnter(agent);
+  }
 
   async function login(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const agent = await api.agents.getByBadge(badge.trim());
-      try {
-        localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
-      } catch {
-        /* private-mode storage unavailable — keep session */
-      }
-      onEnter(agent);
-    } catch {
-      setError("Badge not found. Register this agent to continue.");
-      setMode("register");
+      const agent = await api.agents.login(badge.trim(), pin.trim());
+      await persistAndEnter(agent);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {
       setBusy(false);
     }
@@ -715,18 +727,43 @@ function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: F
     setBusy(true);
     setError(null);
     try {
-      const agent = await api.agents.register(form);
-      try {
-        localStorage.setItem(AGENT_KEY, JSON.stringify(agent));
-      } catch {
-        /* private-mode storage unavailable — keep session */
-      }
-      onEnter(agent);
+      const result = await api.agents.register(form);
+      setIssued(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (issued) {
+    return (
+      <main className="mx-auto max-w-xl px-6 pb-28 pt-36">
+        <div className="rounded-sm hairline p-8">
+          <p className="eyebrow text-museum-gold">Agent vetted & enrolled</p>
+          <h1 className="mt-3 font-display text-3xl text-museum-parchment">
+            One-time access PIN
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-museum-parchment/60">
+            {issued.agent.full_name} is now registered under {issued.agent.ngo_organization}
+            {" "}(badge {issued.agent.badge_number}). Hand this PIN to the agent — it will
+            not be shown again. Only a salted digest of it is kept on the registry.
+          </p>
+          <div className="mt-6 rounded-sm border border-museum-gold/50 bg-museum-gold/10 px-6 py-6 text-center">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-museum-gold">Access PIN</p>
+            <p className="mt-2 font-display text-4xl tracking-[0.35em] text-museum-parchment">
+              {issued.access_pin}
+            </p>
+          </div>
+          <button
+            onClick={() => void persistAndEnter(issued.agent)}
+            className="mt-6 w-full rounded-sm bg-museum-gold py-3.5 text-xs uppercase tracking-[0.24em] text-museum-black"
+          >
+            Enter the field
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -749,8 +786,17 @@ function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: F
               placeholder="Badge number — e.g. RHC-001"
               className={inputCls}
             />
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="6-digit access PIN"
+              inputMode="numeric"
+              autoComplete="current-password"
+              className={inputCls}
+            />
             <button
-              disabled={busy || !badge.trim()}
+              disabled={busy || !badge.trim() || pin.trim().length !== 6}
               className="w-full rounded-sm bg-museum-gold py-3.5 text-xs uppercase tracking-[0.24em] text-museum-black disabled:opacity-40"
             >
               {busy ? "Checking…" : "Enter the field"}
@@ -793,13 +839,37 @@ function AgentGate({ regions, onEnter }: { regions: Region[]; onEnter: (agent: F
               placeholder="Badge number (unique)"
               className={inputCls}
             />
+            <input
+              value={form.contact_email}
+              onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
+              placeholder="Contact email (optional)"
+              type="email"
+              className={inputCls}
+            />
+            <input
+              value={form.ngo_access_code}
+              onChange={(e) => setForm({ ...form, ngo_access_code: e.target.value })}
+              placeholder="Coordinator access code (NGO vetting)"
+              className={inputCls}
+            />
+            <p className="text-[11px] leading-relaxed text-museum-parchment/45">
+              Registration is vetted: it must carry the access code held by the coordinating
+              NGO. The portal then issues the agent a one-time access PIN — no more
+              badge-only sign-in.
+            </p>
             <button
-              disabled={busy || !form.full_name || !form.ngo_organization || !form.assigned_region_id || !form.badge_number}
+              disabled={busy || !form.full_name || !form.ngo_organization || !form.assigned_region_id || !form.badge_number || !form.ngo_access_code}
               className="w-full rounded-sm bg-museum-gold py-3.5 text-xs uppercase tracking-[0.24em] text-museum-black disabled:opacity-40"
             >
-              {busy ? "Registering…" : "Register & enter"}
+              {busy ? "Registering…" : "Register & issue PIN"}
             </button>
             {error && <p className="text-xs text-[#E05C4B]">{error}</p>}
+            <p className="text-center text-[11px] text-museum-parchment/45">
+              Already registered?{" "}
+              <button type="button" onClick={() => { setMode("login"); setError(null); }} className="text-museum-gold hover:underline">
+                Sign in with your PIN
+              </button>
+            </p>
           </form>
         )}
       </div>

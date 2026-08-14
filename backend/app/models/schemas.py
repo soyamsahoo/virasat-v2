@@ -94,7 +94,16 @@ class FieldAgentBase(BaseModel):
 
 
 class FieldAgentCreate(FieldAgentBase):
-    pass
+    # Vetting secret held by the coordinating NGO — proves this onboarding
+    # was authorised. Never persisted.
+    ngo_access_code: str = Field(min_length=1, max_length=255)
+    # Optional coordinator contact so the portal can follow up on issues.
+    contact_email: Optional[str] = Field(default=None, max_length=255)
+
+
+class FieldAgentLogin(BaseModel):
+    badge_number: str = Field(min_length=1, max_length=100)
+    access_pin: str = Field(min_length=6, max_length=6)
 
 
 class FieldAgentRead(FieldAgentBase, Model):

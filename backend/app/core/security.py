@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import secrets
 from datetime import datetime
 
 from fastapi import Header, HTTPException, status
@@ -19,6 +20,28 @@ from app.core.config import get_settings
 
 def sha256_hex(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+# --- Field agent access PIN -------------------------------------------
+# The PIN is the credential a field agent types at sign-in. Only a salted
+# PBKDF2 digest is persisted, never the plain PIN, so a database leak
+# cannot be replayed. `pbkdf2_hmac` is stdlib — no new dependencies.
+PIN_ITERATIONS = 100_000
+
+
+def random_pin() -> str:
+    """Cryptographically random 6-digit PIN, issued once at registration."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def pin_digest(pin: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256", pin.encode(), salt.encode(), PIN_ITERATIONS
+    ).hex()
+
+
+def verify_pin(pin: str, salt: str, expected_digest: str) -> bool:
+    return hmac.compare_digest(pin_digest(pin, salt), expected_digest)
 
 
 def canonical_bytes(record: dict) -> bytes:

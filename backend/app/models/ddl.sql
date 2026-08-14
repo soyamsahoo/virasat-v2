@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS field_agents (
     ngo_organization VARCHAR(255) NOT NULL,
     assigned_region_id UUID REFERENCES regions(id),
     badge_number VARCHAR(100) UNIQUE NOT NULL,
+    access_pin_hash TEXT NOT NULL,
+    pin_salt TEXT NOT NULL,
+    contact_email VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

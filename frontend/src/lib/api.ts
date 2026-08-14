@@ -136,12 +136,19 @@ export const api = {
     get: (id: string) => request<FieldAgent>(`/field-agents/${id}`),
     getByBadge: (badge: string) =>
       request<FieldAgent>(`/field-agents/by-badge/${encodeURIComponent(badge)}`),
+    login: (badge: string, accessPin: string) =>
+      request<FieldAgent>("/field-agents/login", {
+        method: "POST",
+        body: JSON.stringify({ badge_number: badge, access_pin: accessPin }),
+      }),
     register: (payload: {
       full_name: string;
       ngo_organization: string;
       assigned_region_id: string;
       badge_number: string;
-    }) => request<FieldAgent>("/field-agents", {
+      ngo_access_code: string;
+      contact_email?: string;
+    }) => request<{ agent: FieldAgent; access_pin: string }>("/field-agents", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

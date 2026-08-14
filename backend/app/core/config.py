@@ -42,6 +42,13 @@ class Settings(BaseSettings):
 
     # --- Security --------------------------------------------------------
     api_key: str | None = None
+    # Shared secret held by the coordinating NGO: registration of a field
+    # agent is rejected unless this code accompanies the request, proving
+    # the onboarding was authorised. Override via VIRASAT_COORDINATOR_ACCESS_CODE.
+    coordinator_access_code: str = "RHC-VIRASAT-2026"
+    # Demo PIN issued to seeded field agents (memory mode) so the pilot
+    # has working credentials out of the box.
+    seed_agent_pin: str = "246810"
 
     # --- Computer vision -------------------------------------------------
     blur_threshold: float = 100.0
