@@ -6,23 +6,29 @@ import type { InquiryType } from "../types";
 interface InquiryModalProps {
   artisanId: string;
   artisanName: string;
+  initialType?: InquiryType;
   onClose: () => void;
 }
 
 const TYPES: { key: InquiryType; label: string; hint: string }[] = [
+  { key: "patronage", label: "Patronage", hint: "Long-term support relationship" },
   { key: "grant", label: "Grant", hint: "Funding support for the craft or workshop" },
   { key: "exhibition", label: "Exhibition", hint: "Museum / gallery showcase invitation" },
   { key: "commission", label: "Commission", hint: "Direct commissioned artwork" },
   { key: "research", label: "Research", hint: "Academic or documentation partnership" },
-  { key: "patronage", label: "Patronage", hint: "Long-term support relationship" },
   { key: "collaboration", label: "Collaboration", hint: "Institutional project participation" },
 ];
 
 /** Zero-commerce patronage contact form — VIRASAT only brokers the connection. */
-export function InquiryModal({ artisanId, artisanName, onClose }: InquiryModalProps) {
+export function InquiryModal({
+  artisanId,
+  artisanName,
+  initialType,
+  onClose,
+}: InquiryModalProps) {
   const [institution_name, setInstitutionName] = useState("");
   const [institution_type, setInstitutionType] = useState("Museum");
-  const [inquiry_type, setInquiryType] = useState<InquiryType>("exhibition");
+  const [inquiry_type, setInquiryType] = useState<InquiryType>(initialType ?? "patronage");
   const [contact_email, setContactEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);

@@ -8,7 +8,7 @@ import { LineageTree } from "../components/LineageTree";
 import { Timeline } from "../components/Timeline";
 import { ArtworkCard } from "../components/ArtworkCard";
 import { InquiryModal } from "../components/InquiryModal";
-import type { ArtisanDetail, Artwork, ProvenanceEvent, Story } from "../types";
+import type { ArtisanDetail, Artwork, InquiryType, ProvenanceEvent, Story } from "../types";
 
 export function ArtisanPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +18,7 @@ export function ArtisanPage() {
   const [events, setEvents] = useState<ProvenanceEvent[]>([]);
   const [openStory, setOpenStory] = useState<string | null>(null);
   const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [inquiryInitial, setInquiryInitial] = useState<InquiryType | null>(null);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
@@ -96,10 +97,22 @@ export function ArtisanPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button
-                onClick={() => setInquiryOpen(true)}
+                onClick={() => {
+                  setInquiryInitial(null);
+                  setInquiryOpen(true);
+                }}
                 className="flex items-center gap-2 rounded-sm border border-museum-gold/70 px-6 py-3 text-[10px] uppercase tracking-[0.22em] text-museum-gold transition-colors hover:bg-museum-gold hover:text-museum-black"
               >
-                <Handshake size={14} /> Institutional inquiry · Grant / Exhibition
+                <Handshake size={14} /> Grant · Exhibition · Commission
+              </button>
+              <button
+                onClick={() => {
+                  setInquiryInitial("patronage");
+                  setInquiryOpen(true);
+                }}
+                className="flex items-center gap-2 rounded-sm bg-museum-gold px-6 py-3 text-[10px] uppercase tracking-[0.22em] text-museum-black transition-opacity hover:opacity-90"
+              >
+                <Handshake size={14} /> Initiate patronage
               </button>
               <Link
                 to="/dashboard/inquiries"
@@ -190,6 +203,7 @@ export function ArtisanPage() {
         <InquiryModal
           artisanId={artisan.id}
           artisanName={artisan.full_name}
+          initialType={inquiryInitial ?? undefined}
           onClose={() => setInquiryOpen(false)}
         />
       )}
