@@ -91,7 +91,10 @@ function ScrollScene({ src, progress, planeWidth }: ScrollCanvasProps) {
         side: THREE.DoubleSide,
         uniforms: {
           uTexture: { value: active },
-          uScrollProgress: { value: progress },
+          /* progress IS the uniform entry — GSAP mutates progress.value
+           * directly, three uploads uniform.value each frame, so the
+           * scrub reaches the GPU with zero React re-renders. */
+          uScrollProgress: progress,
           uRadius: { value: radius },
           uAspect: { value: aspect },
         },
