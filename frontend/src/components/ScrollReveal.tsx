@@ -28,23 +28,34 @@ export function ScrollReveal({
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
+    const isMobile = window.innerWidth < 768;
     const animation = gsap.fromTo(
       node,
       { autoAlpha: 0, y },
       {
         autoAlpha: 1,
         y: 0,
-        duration: 1.1,
-        delay,
+        duration: isMobile ? 0.9 : 1.1,
+        delay: isMobile ? delay * 0.4 : delay,
         ease: "power3.out",
         scrollTrigger: {
           trigger: node,
-          start: "top 88%",
+          // Fire the moment the element's top enters the viewport bottom
+          // edge — anything later reads as "I have to scroll a whole screen".
+          start: "top 100%",
           once,
         },
       },
     );
+    let disposed = false;
+    const refresh = () => animation.scrollTrigger?.refresh();
+    window.addEventListener("load", refresh, { once: true });
+    document.fonts?.ready.then(() => {
+      if (!disposed) refresh();
+    });
     return () => {
+      disposed = true;
+      window.removeEventListener("load", refresh);
       animation.scrollTrigger?.kill();
       animation.kill();
     };

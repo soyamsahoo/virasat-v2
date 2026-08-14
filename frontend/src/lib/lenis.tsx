@@ -48,7 +48,17 @@ export function LenisProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener("visibilitychange", onVisibility);
 
+    // Re-measure trigger positions once the page has truly settled. Fonts and
+    // lazy images load after ScrollTrigger's initial measurement, pushing
+    // content down — without this, reveals fire a full screen late on phones.
+    const refreshTriggers = () => ScrollTrigger.refresh();
+    window.addEventListener("load", refreshTriggers, { once: true });
+    document.fonts?.ready.then(() => {
+      if (lenisRef.current) refreshTriggers();
+    });
+
     return () => {
+      window.removeEventListener("load", refreshTriggers);
       document.removeEventListener("visibilitychange", onVisibility);
       gsap.ticker.remove(tick);
       lenis.destroy();
