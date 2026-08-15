@@ -23,6 +23,7 @@
  *  string is sanitised to a plain-ASCII approximation before embedding.
  */
 import QRCode from "qrcode";
+import { api } from "./api";
 import { plateUrlFor } from "./plates";
 import { TYPE1_WIDTHS } from "./type1Widths";
 
@@ -195,16 +196,24 @@ function text(
 }
 
 async function loadPlateJpeg(heritageId: string): Promise<Uint8Array | null> {
-  const url = plateUrlFor(heritageId);
-  if (!url) return null;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    return bytes.length > 2 && bytes[0] === 0xff && bytes[1] === 0xd8 ? bytes : null;
-  } catch {
-    return null;
+  // Bundled static plate first, then the live registry image — every
+  // registered work (including ones photographed by field agents) is served
+  // by the registry, so the certificate embeds the real plate.
+  const candidates = [
+    plateUrlFor(heritageId),
+    api.artworks.imageUrl(heritageId),
+  ].filter((url): url is string => Boolean(url));
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.length > 2 && bytes[0] === 0xff && bytes[1] === 0xd8) return bytes;
+    } catch {
+      /* try the next candidate */
+    }
   }
+  return null;
 }
 
 /** Read the SOF marker for intrinsic JPEG dimensions (no decode needed). */
