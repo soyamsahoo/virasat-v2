@@ -43,6 +43,13 @@ def _uid() -> str:
     return str(uuid.uuid4())
 
 
+def _stable_id(key: str) -> str:
+    """Deterministic UUID v5 so seeded records keep identical IDs across
+    cold restarts. Shared URLs (artisan records, lineage links, etc.) stay
+    valid no matter how often the service redeploys."""
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, f"virasat-seed:{key}"))
+
+
 def _hamming(a_hex: str, b_hex: str) -> int:
     """Hamming distance between two 64-char perceptual hash strings."""
     a = int(a_hex, 16)
@@ -85,15 +92,15 @@ class MemoryRepository:
         events = self._read_json("events.json")
 
         for row in traditions or []:
-            row.setdefault("id", _uid())
+            row.setdefault("id", _stable_id(f"tradition:{row['title']}"))
             row.setdefault("created_at", _now())
             self.traditions[row["id"]] = row
         for row in regions or []:
-            row.setdefault("id", _uid())
+            row.setdefault("id", _stable_id(f"region:{row['village']}"))
             row.setdefault("created_at", _now())
             self.regions[row["id"]] = row
         for row in agents or []:
-            row.setdefault("id", _uid())
+            row.setdefault("id", _stable_id(f"agent:{row['badge_number']}"))
             row.setdefault("created_at", _now())
             # A seed agent may carry an explicit plaintext PIN (demo
             # credentials); else the shared demo PIN from settings is used.
@@ -111,7 +118,12 @@ class MemoryRepository:
                 row["assigned_region_id"] = region_ids.get(self._norm(row["region_ref"]))
 
         for row in artisans or []:
-            row.setdefault("id", _uid())
+            row.setdefault(
+                "id",
+                _stable_id(
+                    f"artisan:{row.get('pehchan_card_id') or row['full_name']}"
+                ),
+            )
             row.setdefault("created_at", _now())
             row.setdefault("verification_status", "pending")
             row.setdefault("generation_number", 1)
@@ -128,7 +140,7 @@ class MemoryRepository:
                 row["parent_artisan_id"] = artisan_ids.get(self._norm(parent_ref))
 
         for row in artworks or []:
-            row.setdefault("id", _uid())
+            row.setdefault("id", _stable_id(f"artwork:{row['heritage_id']}"))
             row.setdefault("created_at", _now())
             row.setdefault("primary_image_url", "")
             if row.get("artisan_ref"):
@@ -138,7 +150,10 @@ class MemoryRepository:
         self._load_local_artwork_media()
 
         for row in stories or []:
-            row.setdefault("id", _uid())
+            row.setdefault(
+                "id",
+                _stable_id(f"story:{row.get('artisan_ref')}:{row.get('title')}"),
+            )
             row.setdefault("created_at", _now())
             row.setdefault("language", "Odia")
             if row.get("artisan_ref"):
@@ -146,8 +161,8 @@ class MemoryRepository:
             self.stories.append(row)
 
         artwork_ids = {self._norm(row["heritage_id"]): row["id"] for row in self.artworks.values()}
-        for row in events or []:
-            row.setdefault("id", _uid())
+        for index, row in enumerate(events or []):
+            row.setdefault("id", _stable_id(f"event:{index}"))
             row.setdefault("event_date", _now())
             if row.get("heritage_ref"):
                 row["artwork_id"] = artwork_ids.get(self._norm(row["heritage_ref"]))
