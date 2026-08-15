@@ -125,11 +125,11 @@ async def run() -> None:
 
         agent_rows = read_json(seed / "agents.json")
         agent_ids: dict[str, str] = {}
-        seed_pin = get_settings().seed_agent_pin
         for row in agent_rows:
             agent_id = str(uuid.uuid4())
             agent_ids[norm(row["full_name"])] = agent_id
             salt = str(uuid.uuid4())
+            pin = row.get("access_pin") or get_settings().seed_agent_pin
             await conn.execute(
                 """
                 INSERT INTO field_agents (id, full_name, ngo_organization,
@@ -139,7 +139,7 @@ async def run() -> None:
                 """,
                 agent_id, row["full_name"], row["ngo_organization"],
                 uuid.UUID(region_ids[norm(row["region_ref"])]), row["badge_number"],
-                pin_digest(seed_pin, salt), salt,
+                pin_digest(pin, salt), salt,
             )
 
         for row in read_json(seed / "stories.json"):

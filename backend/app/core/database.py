@@ -95,14 +95,12 @@ class MemoryRepository:
         for row in agents or []:
             row.setdefault("id", _uid())
             row.setdefault("created_at", _now())
-            # Seed agents share the demo PIN (documented in settings) so the
-            # pilot has working credentials; the digest is the only credential
-            # persisted, exactly as for agents registered via the API.
+            # A seed agent may carry an explicit plaintext PIN (demo
+            # credentials); else the shared demo PIN from settings is used.
+            # Either way only the salted digest is persisted.
+            plain_pin = row.pop("access_pin", None) or get_settings().seed_agent_pin
             row.setdefault("pin_salt", _uid())
-            row.setdefault(
-                "access_pin_hash",
-                pin_digest(get_settings().seed_agent_pin, row["pin_salt"]),
-            )
+            row.setdefault("access_pin_hash", pin_digest(plain_pin, row["pin_salt"]))
             self.agents[row["id"]] = row
 
         region_ids = {self._norm(row["village"]): row["id"] for row in self.regions.values()}
